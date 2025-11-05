@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Informatica Cloud Assistant",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Your AI-powered assistant for Informatica Cloud. Get help, automate tasks, and enhance your productivity.",
   "permissions": [
     "cookies",

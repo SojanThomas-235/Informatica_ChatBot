@@ -25,8 +25,12 @@
     min-width: 200px !important;
     justify-content: space-between !important;
 }
-#iics-assistant-panel .login-section input.iics-text-box{
+#iics-assistant-panel input.iics-text-box{
     height:40px!important;
+}
+#iics-assistant-panel  select.iics-select-box{
+    height:40px!important;
+    padding:8px!important;
 }
 .iics-assistant-toggle-positioned:hover .assistant-toggle-btn {
     transform: translateY(-2px) !important;

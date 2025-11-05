@@ -246,7 +246,7 @@ class IICSAssistant {
                         <div class="submenu-content">
                             <div class="form-group">
                                 <label for="mappingSelect">Select Mapping:</label>
-                                <select id="mappingSelect" class="iics-select-box">
+                                <select id="mappingSelect" class="iics-select-box" >
                                     <option value="">Loading mappings...</option>
                                 </select>
                             </div>
