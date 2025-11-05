@@ -30,7 +30,7 @@
 }
 #iics-assistant-panel  select.iics-select-box{
     height:40px!important;
-    padding:10px!important;
+    padding:8px!important;
 }
 .iics-assistant-toggle-positioned:hover .assistant-toggle-btn {
     transform: translateY(-2px) !important;
