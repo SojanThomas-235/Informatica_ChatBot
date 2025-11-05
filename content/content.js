@@ -1,0 +1,936 @@
+/**
+ * IICS Assistant Chrome Extension - Content Script
+ * Unified in-page assistant with complete functionality
+ */
+
+class IICSAssistant {
+    constructor() {
+        this.assistantVisible = false;
+        this.assistantPanel = null;
+        this.apiBaseUrl = 'http://localhost:5000';
+        this.isAuthenticated = false;
+        this.isConnecting = false;
+        
+        this.init();
+    }
+    
+    async init() {
+        // Wait for page to load
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => this.setupIntegration());
+        } else {
+            this.setupIntegration();
+        }
+        
+        // Load settings
+        await this.loadSettings();
+    }
+    
+    async loadSettings() {
+        try {
+            const result = await chrome.storage.sync.get(['backendUrl']);
+            if (result.backendUrl) {
+                this.apiBaseUrl = result.backendUrl;
+            }
+        } catch (error) {
+            console.error('Error loading settings:', error);
+        }
+    }
+    
+    setupIntegration() {
+        // Check if we're on an IICS page
+        if (!this.isIICSPage()) {
+            return;
+        }
+        
+        // Create the assistant toggle button
+        this.createAssistantToggle();
+        
+        // Create the assistant panel
+        this.createAssistantPanel();
+        
+        // Listen for page navigation (SPA)
+        this.observePageChanges();
+        
+        // Listen for messages from extension
+        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+            this.handleExtensionMessage(message, sender, sendResponse);
+        });
+        
+        // Assistant initialized
+    }
+    
+    isIICSPage() {
+        const hostname = window.location.hostname;
+        return hostname.includes('informaticacloud.com') || 
+               hostname.includes('dm-us.informaticacloud.com') ||
+               hostname.includes('dm-eu.informaticacloud.com') ||
+               hostname.includes('dm-ap.informaticacloud.com');
+    }
+    
+    createAssistantToggle() {
+        // Remove existing toggle if present
+        const existing = document.getElementById('iics-assistant-toggle');
+        if (existing) existing.remove();
+        
+        const toggleButton = document.createElement('div');
+        toggleButton.id = 'iics-assistant-toggle';
+        toggleButton.className = 'iics-assistant-toggle-positioned';
+        toggleButton.innerHTML = `
+            <div class="assistant-toggle-btn">
+                <span class="assistant-icon">🤖</span>
+                <span class="assistant-text">Informatica Assistants</span>
+                <span class="toggle-arrow">▼</span>
+            </div>
+        `;
+        
+        // Add click handler
+        toggleButton.addEventListener('click', () => this.toggleAssistant());
+        
+        // Add to page
+        document.body.appendChild(toggleButton);
+    }
+    
+    createAssistantPanel() {
+        // Remove existing panel if present
+        const existing = document.getElementById('iics-assistant-panel');
+        if (existing) existing.remove();
+        
+        const panel = document.createElement('div');
+        panel.id = 'iics-assistant-panel';
+        panel.className = 'assistant-panel-hidden';
+        
+        panel.innerHTML = `
+            <div class="assistant-panel-header">
+                <div class="panel-title">
+                    <span class="panel-icon">🤖</span>
+                    <span>Informatica Assistant</span>
+                </div>
+                <div class="panel-controls">
+                    <button class="chatbot-action-btn" id="settings-btn" title="Settings">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.79a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                        </svg>
+                    </button>
+                    <button class="chatbot-action-btn" id="minimize-btn" title="Minimize">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M5 12h14"></path>
+                        </svg>
+                    </button>
+                    <button class="chatbot-action-btn" id="close-btn" title="Close">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="assistant-panel-content">
+                <!-- Toast Notification -->
+                <div class="toast-notification" id="toastNotification"></div>
+                
+                <!-- Connection Status (Always Visible) -->
+                <div class="connection-status-header">
+                    <div class="status-indicator">
+                        <span class="status-dot" id="statusDot"></span>
+                        <span class="status-text" id="statusText">Disconnected</span>
+                    </div>
+                </div>
+
+                <!-- Login Section -->
+                <div  id="loginSection" style="display: block;">
+                    <div class="login-section" >
+                        <div class="login-content">
+                            <h3>Connect to IICS</h3>
+                            <p>Enter your credentials to start</p>
+                            <form id="loginForm" class="login-form">
+                                <div class="form-group">
+                                    <input type="email" id="username" name="username"  class="iics-text-box"
+                                        placeholder="Username (Email)" required>
+                                </div>
+                                <div class="form-group">
+                                    <input type="password" id="password" name="password" class="iics-text-box"
+                                        placeholder="Password" required>
+                                </div>
+                                
+                                <button type="submit" class="connect-btn" id="connectBtn">
+                                    <span class="btn-text">Connect</span>
+                                    <span class="btn-spinner" id="connectSpinner"></span>
+                                </button>
+                            </form>                          
+                            <div class="login-error" id="loginError"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions Section (Hidden until connected) -->
+                <div id="actionsSection" style="display: none;">
+                    <div class="actions-container">
+                        <div class="action-buttons">
+                            <button class="action-btn" data-action="create-assets">
+                                <span class="action-icon">📦</span>
+                                <span class="action-text">Create Assets</span>
+                            </button>
+                            <button class="action-btn" data-action="check-status">
+                                <span class="action-icon">📊</span>
+                                <span class="action-text">Check Status</span>
+                            </button>
+                            <button class="action-btn" data-action="run-task">
+                                <span class="action-icon">🚀</span>
+                                <span class="action-text">Run Task</span>
+                            </button>
+                            <button class="action-btn" data-action="knowledge-article">
+                                <span class="action-icon">📚</span>
+                                <span class="action-text">Knowledge Article</span>
+                            </button>
+                            <button class="action-btn" data-action="running-jobs">
+                                <span class="action-icon">⚡</span>
+                                <span class="action-text">Running Jobs</span>
+                            </button>
+                            <button class="action-btn logout-btn" data-action="logout">
+                                <span class="action-icon">🚪</span>
+                                <span class="action-text">Logout</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Create Assets Submenu -->
+                <div id="createAssetsSubmenu"  style="display: none;">
+                    <div class="submenu-section">
+                        <div class="submenu-header">
+                            <h3>Create Assets</h3>
+                            <button class="back-btn" id="backToActions">
+                                <span class="back-icon">◀</span>
+                                <span>Back</span>
+                            </button>
+                        </div>
+                        <div class="submenu-content">
+                            <button class="submenu-item" data-submenu-action="clone-mapping">
+                                <span class="submenu-icon">📋</span>
+                                <div class="submenu-text">
+                                    <div class="submenu-title">Clone Mapping</div>
+                                    <div class="submenu-desc">Create a copy of existing mapping</div>
+                                </div>
+                            </button>
+                            <button class="submenu-item" data-submenu-action="create-mapping">
+                                <span class="submenu-icon">🗺️</span>
+                                <div class="submenu-text">
+                                    <div class="submenu-title">Create Mapping</div>
+                                    <div class="submenu-desc">Create a new mapping from scratch</div>
+                                </div>
+                            </button>
+                            <button class="submenu-item" data-submenu-action="create-task">
+                                <span class="submenu-icon">📝</span>
+                                <div class="submenu-text">
+                                    <div class="submenu-title">Create Task</div>
+                                    <div class="submenu-desc">Create a new mapping task</div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Clone Mapping Section -->
+                <div id="cloneMappingSection" style="display: none;">
+                    <div class="submenu-section">
+                        <div class="submenu-header">
+                            <h3>Clone Mapping</h3>
+                            <button class="back-btn" id="backToCreateAssets">
+                                <span class="back-icon">◀</span>
+                                <span>Back</span>
+                            </button>
+                        </div>
+                        <div class="submenu-content">
+                            <div class="form-group">
+                                <label for="mappingSelect">Select Mapping:</label>
+                                <select id="mappingSelect" class="iics-select-box">
+                                    <option value="">Loading mappings...</option>
+                                </select>
+                            </div>
+                            <div id="mappingDetails" style="display: none; margin-top: 15px;">
+                                <div class="mapping-detail-item">
+                                    <strong>Description:</strong>
+                                    <span id="mappingDescription"></span>
+                                </div>
+                                <div class="mapping-detail-item">
+                                    <strong>Created:</strong>
+                                    <span id="mappingCreateTime"></span>
+                                </div>
+                                <div class="mapping-detail-item">
+                                    <strong>Updated:</strong>
+                                    <span id="mappingUpdateTime"></span>
+                                </div>
+                            </div>
+                            <button class="action-btn" id="cloneMappingBtn" style="margin-top: 15px; width: 100%;" disabled>
+                                <span class="action-text">Clone Selected Mapping</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+
+                <!-- Settings Section -->
+                <div class="settings-section" id="settingsSection" style="display: none;">
+                    <div class="settings-content">
+                        <h3>Settings</h3>
+                        
+                        <div class="setting-group">
+                            <label>Backend URL:</label>
+                            <input type="text" id="backendUrl" value="http://localhost:5000" 
+                                   placeholder="Backend server URL">
+                        </div>
+                        
+                        <div class="setting-group">
+                            <label>Theme:</label>
+                            <select id="themeSelect">
+                                <option value="light">Light</option>
+                                <option value="dark">Dark</option>
+                                <option value="auto">Auto</option>
+                            </select>
+                        </div>
+                        
+                        <div class="settings-actions">
+                            <button class="settings-btn save-btn" id="saveSettings">Save</button>
+                            <button class="settings-btn cancel-btn" id="cancelSettings">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Add event listeners
+        this.bindPanelEvents(panel);
+        
+        document.body.appendChild(panel);
+        this.assistantPanel = panel;
+    }
+    
+    bindPanelEvents(panel) {
+        // Header controls - only bind to existing elements
+        const settingsBtn = panel.querySelector('#settings-btn');
+        const minimizeBtn = panel.querySelector('#minimize-btn');
+        const closeBtn = panel.querySelector('#close-btn');
+        
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', () => this.showSettings());
+        }
+        if (minimizeBtn) {
+            minimizeBtn.addEventListener('click', () => this.hideAssistant());
+        }
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.hideAssistant());
+        }
+        
+        // Login form
+        const loginForm = panel.querySelector('#loginForm');
+        if (loginForm) {
+            loginForm.addEventListener('submit', (e) => this.handleLogin(e));
+        }
+        
+        // Settings
+        const saveSettings = panel.querySelector('#saveSettings');
+        const cancelSettings = panel.querySelector('#cancelSettings');
+        
+        if (saveSettings) {
+            saveSettings.addEventListener('click', () => this.saveSettings());
+        }
+        if (cancelSettings) {
+            cancelSettings.addEventListener('click', () => this.hideSettings());
+        }
+        
+        // Action buttons
+        panel.querySelectorAll('.action-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const action = e.currentTarget.getAttribute('data-action');
+                this.handleAction(action);
+            });
+        });
+        
+        // Submenu back button
+        const backBtn = panel.querySelector('#backToActions');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => this.hideCreateAssetsSubmenu());
+        }
+        
+        // Clone mapping back button
+        const backToCreateAssetsBtn = panel.querySelector('#backToCreateAssets');
+        if (backToCreateAssetsBtn) {
+            backToCreateAssetsBtn.addEventListener('click', () => this.hideCloneMappingSection());
+        }
+        
+        // Mapping select change handler
+        const mappingSelect = panel.querySelector('#mappingSelect');
+        if (mappingSelect) {
+            mappingSelect.addEventListener('change', (e) => this.handleMappingSelection(e));
+        }
+        
+        // Clone mapping button
+        const cloneMappingBtn = panel.querySelector('#cloneMappingBtn');
+        if (cloneMappingBtn) {
+            cloneMappingBtn.addEventListener('click', () => this.handleCloneMapping());
+        }
+        
+        // Submenu action buttons
+        panel.querySelectorAll('.submenu-item').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const action = e.currentTarget.getAttribute('data-submenu-action');
+                this.handleSubmenuAction(action);
+            });
+        });
+    }
+    
+    toggleAssistant() {
+        if (this.assistantVisible) {
+            this.hideAssistant();
+        } else {
+            this.showAssistant();
+        }
+    }
+    
+    showAssistant() {
+        this.assistantPanel.className = 'assistant-panel-visible';
+        this.assistantVisible = true;
+        
+        // Update toggle arrow
+        const arrow = document.querySelector('.toggle-arrow');
+        if (arrow) arrow.textContent = '▲';
+        
+        // Check authentication status
+        this.checkAuthStatus();
+    }
+    
+    hideAssistant() {
+        this.assistantPanel.className = 'assistant-panel-hidden';
+        this.assistantVisible = false;
+        
+        // Update toggle arrow
+        const arrow = document.querySelector('.toggle-arrow');
+        if (arrow) arrow.textContent = '▼';
+    }
+    
+    showSettings() {
+        this.assistantPanel.querySelector('#loginSection').style.display = 'none';
+        this.assistantPanel.querySelector('#actionsSection').style.display = 'none';
+        this.assistantPanel.querySelector('#settingsSection').style.display = 'block';
+    }
+    
+    hideSettings() {
+        this.assistantPanel.querySelector('#settingsSection').style.display = 'none';
+        if (this.isAuthenticated) {
+            this.assistantPanel.querySelector('#actionsSection').style.display = 'block';
+        } else {
+            this.showLoginInterface();
+        }
+    }
+    
+    showLoginInterface() {
+        this.assistantPanel.querySelector('#loginSection').style.display = 'block';
+        this.assistantPanel.querySelector('#actionsSection').style.display = 'none';
+        this.assistantPanel.querySelector('#settingsSection').style.display = 'none';
+        this.updateConnectionStatus('disconnected');
+    }
+    
+    showActionsSection() {
+        const actionsSection = this.assistantPanel.querySelector('#actionsSection');
+        if (actionsSection) {
+            actionsSection.style.display = 'block';
+        }
+    }
+    
+    async checkAuthStatus() {
+        // Check if we have saved session token
+        const savedToken = localStorage.getItem('iics_session_token');
+        const savedServerUrl = localStorage.getItem('iics_server_url');
+        
+        if (savedToken && savedServerUrl) {
+            this.sessionToken = savedToken;
+            this.serverUrl = savedServerUrl;
+            this.isAuthenticated = true;
+            this.updateConnectionStatus('connected');
+            this.assistantPanel.querySelector('#loginSection').style.display = 'none';
+            this.assistantPanel.querySelector('#actionsSection').style.display = 'block';
+        } else if (this.isAuthenticated && this.sessionToken) {
+            this.updateConnectionStatus('connected');
+            this.assistantPanel.querySelector('#loginSection').style.display = 'none';
+            this.assistantPanel.querySelector('#actionsSection').style.display = 'block';
+        } else {
+            this.isAuthenticated = false;
+            this.showLoginInterface();
+        }
+    }
+    
+    async handleLogin(event) {
+        event.preventDefault();
+        
+        if (this.isConnecting) return;
+        
+        const formData = new FormData(event.target);
+        const credentials = {
+            username: formData.get('username'),
+            password: formData.get('password')
+        };
+        
+        // Validate inputs
+        if (!credentials.username || !credentials.password) {
+            this.showLoginError('Please enter username and password');
+            return;
+        }
+        
+        await this.performLogin(credentials);
+    }
+    
+    async performLogin(credentials) {
+        this.isConnecting = true;
+        this.setLoginLoading(true);
+        this.hideLoginError();
+        this.updateConnectionStatus('connecting');
+        
+        try {
+            // Call IICS API directly
+            const response = await fetch('https://dm-us.informaticacloud.com/saas/public/core/v3/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: credentials.username,
+                    password: credentials.password
+                })
+            });
+            
+            const data = await response.json();
+            console.log(data);
+            // Check for session token (icSessionId or sessionId)
+            const sessionId = data.userInfo.icSessionId || data.userInfo.sessionId;
+            
+            if (response.ok && sessionId) {
+                this.isAuthenticated = true;
+                this.updateConnectionStatus('connected');
+                
+                // Store session info
+                this.sessionToken = sessionId;
+                this.serverUrl = data.serverUrl;
+                
+                // Save ONLY session token and server URL (NOT password)
+                try {
+                    localStorage.setItem('iics_session_token', sessionId);
+                    localStorage.setItem('iics_server_url', data.serverUrl);
+                } catch (error) {
+                    console.error('Failed to save session:', error);
+                }
+                
+                // Show success toast
+                this.showToast('✅ Login successful!', 'success');
+                
+                // Hide login form and show actions
+                this.assistantPanel.querySelector('#loginSection').style.display = 'none';
+                this.showActionsSection();
+                
+                // Clear form
+                this.assistantPanel.querySelector('#loginForm').reset();
+            } else {
+                const errorMsg = data.error?.message || data.message || 'Login failed';
+                this.showLoginError(errorMsg);
+                this.showToast('❌ Login failed. Please try again.', 'error');
+                this.updateConnectionStatus('disconnected');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            this.showLoginError('Connection failed. Please check your credentials and try again.');
+            this.showToast('❌ Connection failed. Please try again.', 'error');
+            this.updateConnectionStatus('disconnected');
+        } finally {
+            this.isConnecting = false;
+            this.setLoginLoading(false);
+        }
+    }
+    
+    updateConnectionStatus(status) {
+        const statusDot = this.assistantPanel.querySelector('#statusDot');
+        const statusText = this.assistantPanel.querySelector('#statusText');
+        
+        if (statusDot && statusText) {
+            if (status === 'connected') {
+                statusDot.className = 'status-dot connected';
+                statusText.textContent = 'Connected';
+            } else if (status === 'connecting') {
+                statusDot.className = 'status-dot connecting';
+                statusText.textContent = 'Connecting...';
+            } else {
+                statusDot.className = 'status-dot disconnected';
+                statusText.textContent = 'Disconnected';
+            }
+        }
+    }
+    
+    setLoginLoading(loading) {
+        const connectBtn = this.assistantPanel.querySelector('#connectBtn');
+        const spinner = this.assistantPanel.querySelector('#connectSpinner');
+        
+        if (connectBtn && spinner) {
+            connectBtn.disabled = loading;
+            spinner.style.display = loading ? 'inline-block' : 'none';
+        }
+    }
+    
+    showLoginError(message) {
+        const errorDiv = this.assistantPanel.querySelector('#loginError');
+        if (errorDiv) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+    }
+    
+    hideLoginError() {
+        const errorDiv = this.assistantPanel.querySelector('#loginError');
+        if (errorDiv) {
+            errorDiv.style.display = 'none';
+        }
+    }
+    
+    showToast(message, type = 'success') {
+        const toast = this.assistantPanel.querySelector('#toastNotification');
+        if (!toast) return;
+        
+        // Set message and type
+        toast.textContent = message;
+        toast.className = `toast-notification toast-${type} toast-show`;
+        
+        // Auto hide after 3 seconds
+        setTimeout(() => {
+            toast.className = 'toast-notification';
+        }, 3000);
+    }
+    
+    handleAction(action) {
+        if (action === 'logout') {
+            this.logout();
+            return;
+        }
+        
+        if (action === 'create-assets') {
+            this.showCreateAssetsSubmenu();
+            return;
+        }
+        
+        // Handle other actions via backend
+        const actionMessages = {
+            'check-status': 'Check Status feature - Coming soon!',
+            'run-task': 'Run Task feature - Coming soon!',
+            'knowledge-article': 'Knowledge Article feature - Coming soon!',
+            'running-jobs': 'Running Jobs feature - Coming soon!'
+        };
+        
+        const message = actionMessages[action] || 'Unknown action';
+        this.showToast(message, 'info');
+        
+    }
+    
+
+    showCreateAssetsSubmenu() {
+        this.assistantPanel.querySelector('#actionsSection').style.display = 'none';
+        this.assistantPanel.querySelector('#createAssetsSubmenu').style.display = 'block';
+    }
+    
+    hideCreateAssetsSubmenu() {
+        this.assistantPanel.querySelector('#createAssetsSubmenu').style.display = 'none';
+        this.assistantPanel.querySelector('#actionsSection').style.display = 'block';
+    }
+    
+    async handleSubmenuAction(action) {
+        if (action === 'clone-mapping') {
+            await this.showCloneMappingSection();
+            return;
+        }
+        
+        // For other actions, show coming soon messages
+        const actionMessages = {
+            'create-mapping': 'Create Mapping feature - Coming soon!',
+            'create-task': 'Create Task feature - Coming soon!'
+        };
+        
+        const message = actionMessages[action] || 'Unknown submenu action';
+        this.showToast(message, 'info');
+    }
+    
+    async showCloneMappingSection() {
+        // Hide create assets submenu and show clone mapping section
+        this.assistantPanel.querySelector('#createAssetsSubmenu').style.display = 'none';
+        this.assistantPanel.querySelector('#cloneMappingSection').style.display = 'block';
+        
+        // Fetch mappings
+        await this.fetchMappings();
+    }
+    
+    hideCloneMappingSection() {
+        this.assistantPanel.querySelector('#cloneMappingSection').style.display = 'none';
+        this.assistantPanel.querySelector('#createAssetsSubmenu').style.display = 'block';
+    }
+    
+async fetchMappings() {
+    const mappingSelect = this.assistantPanel.querySelector('#mappingSelect');
+
+    // -----------------------------------------------------------------
+    // 1. Need a valid session token – server URL is hard‑coded later
+    // -----------------------------------------------------------------
+    if (!this.sessionToken) {
+        mappingSelect.innerHTML = '<option value="">Please login first</option>';
+        this.showToast('Please login to fetch mappings', 'error');
+        return;
+    }
+
+    try {
+        mappingSelect.innerHTML = '<option value="">Loading mappings...</option>';
+
+        console.log('Session Token:', this.sessionToken);
+
+        // --------------------------------------------------------------
+        // 2. HARDCODED ENDPOINT – exactly as you had originally
+        // --------------------------------------------------------------
+        const apiUrl = `https://use4.dm-us.informaticacloud.com/saas/api/v2/mapping/`;
+        console.log('Fetching mappings from:', apiUrl);
+
+        // --------------------------------------------------------------
+        // 3. Headers – both forms are sent (some pods need one, some the other)
+        // --------------------------------------------------------------
+        const myHeaders = new Headers();
+        myHeaders.append('Accept', 'application/json');
+        myHeaders.append('Content-Type', 'application/json');
+        myHeaders.append('icSessionId', this.sessionToken);
+        myHeaders.append('INFA-SESSION-ID', this.sessionToken);
+
+        const requestOptions = {
+            method: 'GET',
+            headers: myHeaders,
+            redirect: 'follow',
+            credentials: 'include',   // keeps any cookie‑based session alive
+            mode: 'cors'
+        };
+
+        const response = await fetch(apiUrl, requestOptions);
+
+        // --------------------------------------------------------------
+        // 4. LOGGING (helps you see what actually came back)
+        // --------------------------------------------------------------
+        console.log('Response status:', response.status);
+        console.log('Response URL (after redirect):', response.url);
+        console.log('Response content-type:', response.headers.get('content-type'));
+
+        // --------------------------------------------------------------
+        // 5. Detect login‑page redirect (HTML) even on 200
+        // --------------------------------------------------------------
+        const contentType = response.headers.get('content-type') || '';
+        if (response.url.includes('/identity-service/') ||
+            response.url.includes('/login') ||
+            contentType.includes('text/html')) {
+
+            const html = await response.text();
+            console.error('Received HTML (probably login page):', html.substring(0, 300));
+            throw new Error('Session invalid – redirected to login page');
+        }
+
+        // --------------------------------------------------------------
+        // 6. Must be JSON
+        // --------------------------------------------------------------
+        if (!contentType.includes('application/json')) {
+            const txt = await response.text();
+            console.error('Non‑JSON payload:', txt.substring(0, 200));
+            throw new Error('Server returned non‑JSON data');
+        }
+
+        // --------------------------------------------------------------
+        // 7. HTTP errors
+        // --------------------------------------------------------------
+        if (!response.ok) {
+            const errBody = await response.json().catch(() => ({}));
+            console.error('API error payload:', errBody);
+            throw new Error(`HTTP ${response.status}: ${errBody.error?.message || 'Unknown'}`);
+        }
+
+        // --------------------------------------------------------------
+        // 8. Parse JSON
+        // --------------------------------------------------------------
+        let result;
+        try { result = await response.json(); }
+        catch (e) {
+            console.error('JSON parse failed:', e);
+            throw new Error('Invalid JSON from server');
+        }
+
+        console.log('API Response:', result);
+        console.log('Is array?', Array.isArray(result));
+
+        // --------------------------------------------------------------
+        // 9. Populate dropdown – same logic you already had
+        // --------------------------------------------------------------
+        const mappings = Array.isArray(result) ? result : [];
+
+        if (mappings.length === 0) {
+            mappingSelect.innerHTML = '<option value="">No mappings found</option>';
+            this.showToast('No mappings found', 'info');
+            return;
+        }
+
+        const mappingTemplates = mappings.filter(m => m['@type'] === 'mappingTemplate');
+        console.log('Mapping templates count:', mappingTemplates.length);
+
+        if (mappingTemplates.length === 0) {
+            mappingSelect.innerHTML = '<option value="">No mapping templates found</option>';
+            this.showToast('No mapping templates found', 'info');
+            return;
+        }
+
+        mappingSelect.innerHTML = '<option value="">Select a mapping...</option>';
+        mappingTemplates.forEach(mapping => {
+            const opt = document.createElement('option');
+            opt.value = mapping.id;
+            opt.textContent = mapping.name || mapping.id;
+            opt.dataset.mapping = JSON.stringify(mapping);
+            mappingSelect.appendChild(opt);
+        });
+
+        this.showToast(`Loaded ${mappingTemplates.length} mapping templates`, 'success');
+
+    } catch (error) {
+        console.error('Error fetching mappings:', error);
+        mappingSelect.innerHTML = '<option value="">Error loading mappings</option>';
+        this.showToast('Failed to fetch mappings: ' + error.message, 'error');
+    }
+}
+    
+
+    
+    handleMappingSelection(event) {
+        const selectedOption = event.target.selectedOptions[0];
+        const mappingDetails = this.assistantPanel.querySelector('#mappingDetails');
+        const cloneMappingBtn = this.assistantPanel.querySelector('#cloneMappingBtn');
+        
+        if (!selectedOption.value) {
+            mappingDetails.style.display = 'none';
+            cloneMappingBtn.disabled = true;
+            return;
+        }
+        
+        try {
+            const mapping = JSON.parse(selectedOption.dataset.mapping);
+            
+            // Display mapping details
+            this.assistantPanel.querySelector('#mappingDescription').textContent = mapping.description || 'No description';
+            this.assistantPanel.querySelector('#mappingCreateTime').textContent = new Date(mapping.createTime).toLocaleString();
+            this.assistantPanel.querySelector('#mappingUpdateTime').textContent = new Date(mapping.updateTime).toLocaleString();
+            
+            mappingDetails.style.display = 'block';
+            cloneMappingBtn.disabled = false;
+            
+            // Store selected mapping
+            this.selectedMapping = mapping;
+            
+        } catch (error) {
+            console.error('Error parsing mapping data:', error);
+            mappingDetails.style.display = 'none';
+            cloneMappingBtn.disabled = true;
+        }
+    }
+    
+    async handleCloneMapping() {
+        if (!this.selectedMapping) {
+            this.showToast('Please select a mapping first', 'error');
+            return;
+        }
+        
+        // Placeholder for clone functionality
+        this.showToast(`Cloning mapping: ${this.selectedMapping.name}`, 'info');
+        console.log('Selected mapping to clone:', this.selectedMapping);
+        
+        // Future implementation will call the clone API
+        // await this.callCloneMappingAPI(this.selectedMapping);
+    }
+    
+    logout() {
+        // Clear session
+        this.isAuthenticated = false;
+        this.sessionToken = null;
+        this.serverUrl = null;
+        
+        // Clear localStorage (only session data, no passwords stored)
+        localStorage.removeItem('iics_session_token');
+        localStorage.removeItem('iics_server_url');
+        
+        // Show login interface
+        this.showLoginInterface();
+        this.showToast('Logged out successfully', 'success');
+    }
+    
+
+    async saveSettings() {
+        const backendUrl = this.assistantPanel.querySelector('#backendUrl').value;
+        const theme = this.assistantPanel.querySelector('#themeSelect').value;
+        
+        try {
+            await chrome.storage.sync.set({ backendUrl, theme });
+            this.apiBaseUrl = backendUrl;
+            this.hideSettings();
+        } catch (error) {
+            console.error('Error saving settings:', error);
+        }
+    }
+    
+    observePageChanges() {
+        // Handle SPA navigation
+        const observer = new MutationObserver(() => {
+            if (!document.getElementById('iics-assistant-toggle')) {
+                this.createAssistantToggle();
+            }
+        });
+        
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    }
+    
+    handleExtensionMessage(message, sender, sendResponse) {
+        switch (message.type) {
+            case 'TOGGLE_ASSISTANT':
+                this.toggleAssistant();
+                sendResponse({ success: true });
+                break;
+                
+            case 'GET_PAGE_CONTEXT':
+                const context = this.extractPageContext();
+                sendResponse({ context });
+                break;
+                
+            default:
+                sendResponse({ error: 'Unknown message type' });
+        }
+    }
+    
+    extractPageContext() {
+        // Extract context from current IICS page
+        return {
+            url: window.location.href,
+            title: document.title,
+            page_type: this.detectPageType()
+        };
+    }
+    
+    detectPageType() {
+        const url = window.location.href;
+        if (url.includes('/home')) return 'home';
+        if (url.includes('/monitor')) return 'monitor';
+        if (url.includes('/explore')) return 'explore';
+        return 'unknown';
+    }
+}
+
+// Initialize the assistant when DOM is loaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => new IICSAssistant());
+} else {
+    new IICSAssistant();
+}

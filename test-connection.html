@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IICS Extension - Connection Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #0073e6;
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        button {
+            background-color: #0073e6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #005bb8;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 IICS Extension Connection Test</h1>
+        <p>Use this page to test the connection between your Chrome extension and the Flask backend.</p>
+        
+        <div class="test-section">
+            <h3>1. Backend Configuration</h3>
+            <label>Backend URL:</label>
+            <input type="text" id="backendUrl" value="http://localhost:5000" placeholder="Backend URL">
+            <button onclick="saveBackendUrl()">Save URL</button>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. Basic Connection Test</h3>
+            <p>Test if the backend server is running and accessible.</p>
+            <button onclick="testHealth()">Test Health Endpoint</button>
+            <button onclick="testCors()">Test CORS Configuration</button>
+            <div id="healthResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. Extension Storage Test</h3>
+            <p>Test Chrome extension storage functionality.</p>
+            <button onclick="testStorage()">Test Storage</button>
+            <button onclick="clearStorage()">Clear Storage</button>
+            <div id="storageResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. Login Test</h3>
+            <p>Test authentication with sample credentials (won't actually authenticate).</p>
+            <input type="email" id="testUsername" placeholder="Username (test@example.com)">
+            <input type="password" id="testPassword" placeholder="Password">
+            <input type="text" id="testClientId" placeholder="Client ID">
+            <input type="password" id="testClientSecret" placeholder="Client Secret">
+            <button onclick="testLogin()">Test Login Request</button>
+            <div id="loginResult" class="result" style="display: none;"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>5. Extension Status</h3>
+            <p>Check if the extension is properly loaded and configured.</p>
+            <button onclick="checkExtensionStatus()">Check Extension Status</button>
+            <div id="extensionResult" class="result" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        let backendUrl = 'http://localhost:5000';
+        
+        function saveBackendUrl() {
+            backendUrl = document.getElementById('backendUrl').value;
+            if (typeof chrome !== 'undefined' && chrome.storage) {
+                chrome.storage.sync.set({ backendUrl }, () => {
+                    showResult('healthResult', 'Backend URL saved: ' + backendUrl, 'success');
+                });
+            } else {
+                showResult('healthResult', 'Backend URL updated: ' + backendUrl, 'info');
+            }
+        }
+        
+        async function testHealth() {
+            try {
+                showResult('healthResult', 'Testing health endpoint...', 'info');
+                
+                const response = await fetch(`${backendUrl}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    },
+                    mode: 'cors'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('healthResult', 
+                        `✅ Health check successful!\n${JSON.stringify(data, null, 2)}`, 
+                        'success');
+                } else {
+                    showResult('healthResult', 
+                        `❌ Health check failed (${response.status})\n${JSON.stringify(data, null, 2)}`, 
+                        'error');
+                }
+            } catch (error) {
+                showResult('healthResult', 
+                    `❌ Connection failed: ${error.message}\n\nPossible issues:\n- Backend server not running\n- Wrong URL\n- CORS configuration\n- Network connectivity`, 
+                    'error');
+            }
+        }
+        
+        async function testCors() {
+            try {
+                showResult('healthResult', 'Testing CORS configuration...', 'info');
+                
+                const response = await fetch(`${backendUrl}/test-cors`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    mode: 'cors',
+                    body: JSON.stringify({ test: 'cors' })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showResult('healthResult', 
+                        `✅ CORS test successful!\n${JSON.stringify(data, null, 2)}`, 
+                        'success');
+                } else {
+                    showResult('healthResult', 
+                        `❌ CORS test failed (${response.status})\n${JSON.stringify(data, null, 2)}`, 
+                        'error');
+                }
+            } catch (error) {
+                showResult('healthResult', 
+                    `❌ CORS test failed: ${error.message}`, 
+                    'error');
+            }
+        }
+        
+        function testStorage() {
+            if (typeof chrome !== 'undefined' && chrome.storage) {
+                const testData = {
+                    testKey: 'testValue',
+                    timestamp: new Date().toISOString()
+                };
+                
+                chrome.storage.sync.set(testData, () => {
+                    chrome.storage.sync.get(['testKey', 'timestamp'], (result) => {
+                        showResult('storageResult', 
+                            `✅ Storage test successful!\nStored: ${JSON.stringify(testData, null, 2)}\nRetrieved: ${JSON.stringify(result, null, 2)}`, 
+                            'success');
+                    });
+                });
+            } else {
+                showResult('storageResult', 
+                    '❌ Chrome storage API not available. Make sure you\'re running this in the extension context.', 
+                    'error');
+            }
+        }
+        
+        function clearStorage() {
+            if (typeof chrome !== 'undefined' && chrome.storage) {
+                chrome.storage.sync.clear(() => {
+                    showResult('storageResult', '✅ Storage cleared successfully!', 'success');
+                });
+            } else {
+                showResult('storageResult', 
+                    '❌ Chrome storage API not available.', 
+                    'error');
+            }
+        }
+        
+        async function testLogin() {
+            const credentials = {
+                username: document.getElementById('testUsername').value || 'test@example.com',
+                password: document.getElementById('testPassword').value || 'testpassword',
+                client_id: document.getElementById('testClientId').value || 'test_client_id',
+                client_secret: document.getElementById('testClientSecret').value || 'test_client_secret'
+            };
+            
+            try {
+                showResult('loginResult', 'Testing login request...', 'info');
+                
+                const response = await fetch(`${backendUrl}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    mode: 'cors',
+                    credentials: 'include',
+                    body: JSON.stringify(credentials)
+                });
+                
+                const data = await response.json();
+                
+                showResult('loginResult', 
+                    `Login request completed (${response.status})\n${JSON.stringify(data, null, 2)}\n\nNote: This is expected to fail with test credentials.`, 
+                    response.ok ? 'success' : 'info');
+                    
+            } catch (error) {
+                showResult('loginResult', 
+                    `❌ Login request failed: ${error.message}`, 
+                    'error');
+            }
+        }
+        
+        function checkExtensionStatus() {
+            const status = {
+                chromeAPI: typeof chrome !== 'undefined',
+                storageAPI: typeof chrome !== 'undefined' && !!chrome.storage,
+                runtimeAPI: typeof chrome !== 'undefined' && !!chrome.runtime,
+                extensionId: typeof chrome !== 'undefined' && chrome.runtime ? chrome.runtime.id : 'N/A',
+                userAgent: navigator.userAgent,
+                location: window.location.href
+            };
+            
+            showResult('extensionResult', 
+                `Extension Status:\n${JSON.stringify(status, null, 2)}`, 
+                status.chromeAPI ? 'success' : 'error');
+        }
+        
+        function showResult(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.textContent = message;
+            element.className = `result ${type}`;
+            element.style.display = 'block';
+        }
+        
+        // Auto-load saved backend URL
+        if (typeof chrome !== 'undefined' && chrome.storage) {
+            chrome.storage.sync.get(['backendUrl'], (result) => {
+                if (result.backendUrl) {
+                    backendUrl = result.backendUrl;
+                    document.getElementById('backendUrl').value = backendUrl;
+                }
+            });
+        }
+    </script>
+</body>
+</html>

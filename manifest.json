@@ -1,0 +1,63 @@
+{
+  "manifest_version": 3,
+  "name": "Informatica Cloud Assistant",
+  "version": "1.0.0",
+  "description": "Your AI-powered assistant for Informatica Cloud. Get help, automate tasks, and enhance your productivity.",
+  "permissions": [
+    "cookies",
+    "storage",
+    "activeTab",
+    "scripting",
+    "storage",
+    "webRequest"
+  ],
+  "host_permissions": [
+    "https://*.informaticacloud.com/*",
+    "https://*.informaticacloud.eu/*",
+    "https://*.informaticacloud.com.au/*"
+  ],
+  "action": {
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    },
+    "default_title": "Informatica Cloud Assistant"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background/background.js",
+    "type": "module"
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; connect-src 'self' https://*.informaticacloud.com https://*.informaticacloud.eu https://*.informaticacloud.com.au;"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.informaticacloud.com/*",
+        "https://*.informaticacloud.eu/*",
+        "https://*.informaticacloud.com.au/*"
+      ],
+      "js": ["content/content.js"],
+      "css": ["content/content.css"],
+      "run_at": "document_end"
+    }
+  ],
+  
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "icons/*",
+        "css/*",
+        "js/*",
+        "API/*"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

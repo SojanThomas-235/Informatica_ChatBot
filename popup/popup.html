@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IICS Assistant</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <div class="extension-container">
+        <!-- Header -->
+        <div class="extension-header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <span class="logo-icon">🤖</span>
+                    <span class="logo-text">Informatica Assistant</span>
+                </div>
+                <div class="header-actions">
+                    <button class="header-btn" id="settingsBtn" title="Settings">
+                        <span>⚙️</span>
+                    </button>
+                    <button class="header-btn" id="minimizeBtn" title="Minimize">
+                        <span>➖</span>
+                    </button>
+                    <button class="header-btn close-btn" id="closeBtn" title="Close">
+                        <span>✖️</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connection Status -->
+        <div class="connection-status" id="connectionStatus">
+            <div class="status-indicator">
+                <span class="status-dot" id="statusDot"></span>
+                <span class="status-text" id="statusText">Disconnected</span>
+            </div>
+        </div>
+
+        <!-- Login Panel -->
+        <div class="login-section" id="loginSection">
+            <div class="login-content">
+                <h3>Connect to IICS</h3>
+                <p>Enter your credentials to start using the assistant</p>
+                
+                <form id="loginForm" class="login-form">
+                    <div class="form-group">
+                        <input type="email" class="chatbox-input" id="username" name="username" 
+                               placeholder="Username (Email)" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <input type="password" class="chatbox-input" id="password" name="password" 
+                               placeholder="Password" required>
+                    </div>
+                    
+                    <button type="submit" class="connect-btn" id="connectBtn">
+                        <span class="btn-text">Connect</span>
+                        <span class="btn-spinner" id="connectSpinner"></span>
+                    </button>
+                </form>
+                
+                <div class="login-error" id="loginError"></div>
+            </div>
+        </div>
+
+        <!-- Chat Interface -->
+        <div class="chat-section" id="chatSection" style="display: none;">
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <button class="quick-btn" data-action="run task">
+                    <span class="quick-icon">🚀</span>
+                    <span class="quick-text">Run Task</span>
+                </button>
+                <button class="quick-btn" data-action="check status">
+                    <span class="quick-icon">📊</span>
+                    <span class="quick-text">Check Status</span>
+                </button>
+                <button class="quick-btn" data-action="show failed jobs">
+                    <span class="quick-icon">❌</span>
+                    <span class="quick-text">Failed Jobs</span>
+                </button>
+                <button class="quick-btn" data-action="list connections">
+                    <span class="quick-icon">🔗</span>
+                    <span class="quick-text">Connections</span>
+                </button>
+            </div>
+
+            <!-- Chat Messages -->
+            <div class="chat-messages" id="chatMessages">
+                <div class="welcome-message">
+                    <div class="assistant-message">
+                        <div class="message-bubble">
+                            Hi! I'm your IICS assistant. I can help you:<br>
+                            🚀 Run mapping tasks and workflows<br>
+                            📊 Check task status<br>
+                            ❌ Monitor failed jobs<br>
+                            🔗 Manage connections<br><br>
+                            Try asking me something!
+                        </div>
+                        <div class="message-time">Just now</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="chat-input-section">
+                <div class="input-container">
+                    <input type="text" 
+                           id="chatInput" 
+                           class="chat-input" 
+                           placeholder="Ask me anything about IICS..."
+                           autocomplete="off">
+                    <button id="sendBtn" class="send-btn" disabled>
+                        <span>📤</span>
+                    </button>
+                </div>
+                
+                <!-- Suggestions -->
+                <div class="suggestions" id="suggestions">
+                    <div class="suggestion-item" data-text="run CurrencyConversion_Mapping">
+                        Run mapping task
+                    </div>
+                    <div class="suggestion-item" data-text="check status of my task">
+                        Check task status
+                    </div>
+                    <div class="suggestion-item" data-text="show failed jobs today">
+                        Show failed jobs
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Panel -->
+        <div class="settings-section" id="settingsSection" style="display: none;">
+            <div class="settings-content">
+                <h3>Settings</h3>
+                
+                <div class="setting-group">
+                    <label>Backend URL:</label>
+                    <input type="text" id="backendUrl" value="http://localhost:5000" 
+                           placeholder="Backend server URL">
+                </div>
+                
+                <div class="setting-group">
+                    <label>Theme:</label>
+                    <select id="themeSelect">
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                        <option value="auto">Auto</option>
+                    </select>
+                </div>
+                
+                <div class="settings-actions">
+                    <button class="settings-btn save-btn" id="saveSettings">Save</button>
+                    <button class="settings-btn cancel-btn" id="cancelSettings">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <div class="loading-text">Processing...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
