@@ -258,6 +258,12 @@ class IICSAssistant {
                                     <option value="">Loading mappings...</option>
                                 </select>
                             </div>
+                            <div class="form-group">
+                                <label for="folderSelect">Select Folder:</label>
+                                <select id="folderSelect" class="iics-select-box" >
+                                    <option value="">Loading folders...</option>
+                                </select>
+                            </div>
                             <div id="mappingDetails" style="display: none; margin-top: 15px;">
                                 <div class="mapping-detail-item">
                                     <strong>Description:</strong>
@@ -290,16 +296,13 @@ class IICSAssistant {
                             </button>
                         </div>
                         <div class="submenu-content">
-                            <button class="action-btn" id="loadTaskFlowsBtn" style="margin-bottom: 15px; width: 100%;">
-                                <span class="action-text">Load Task Flows</span>
-                            </button>
-                            <div class="form-group">
+                            <div class="form-group" style="margin-top: 15px;">
                                 <label for="taskFlowSelect">Select Task Flow:</label>
                                 <select id="taskFlowSelect" class="iics-select-box" disabled>
                                     <option value="">Select a task flow...</option>
                                 </select>
                             </div>
-                            <button class="action-btn" id="runSelectedTaskBtn" style="margin-top: 15px; width: 100%;" disabled>
+                            <button class="action-btn" data-action="run-selected-task" id="runSelectedTaskBtn" style="margin-top: 15px; width: 100%;" disabled>
                                 <span class="action-text">Run Selected Task</span>
                             </button>
                         </div>
@@ -406,12 +409,6 @@ class IICSAssistant {
       backToActionsFromRunTaskBtn.addEventListener("click", () =>
         this.hideRunTaskSection()
       );
-    }
-
-    // Load task flows button
-    const loadTaskFlowsBtn = panel.querySelector("#loadTaskFlowsBtn");
-    if (loadTaskFlowsBtn) {
-      loadTaskFlowsBtn.addEventListener("click", () => this.fetchTaskFlows());
     }
 
     // Task flow select change
@@ -770,8 +767,9 @@ class IICSAssistant {
             
         case "run-task":
             this.showRunTaskSection();
+            //this.fetchTaskFlows()
             break;
-            
+           
         case "check-status":
             this.showToast("Checking system status...", "info");
             // Future implementation for check-status
@@ -783,7 +781,14 @@ class IICSAssistant {
             // Future implementation for knowledge-article
             this.showToast("Knowledge base feature coming soon!", "info");
             break;
-            
+         case "load-mapping-tasks":
+            this.showToast("Loading Mapping Task...", "info");
+           
+            break;  
+          case "run-selected-task":
+            this.showToast("Loading Mapping Task...", "info");
+           
+            break;   
         case "running-jobs":
             this.showToast("Fetching running jobs...", "info");
             // Future implementation for running-jobs
@@ -834,6 +839,7 @@ class IICSAssistant {
 
     // Fetch mappings
     await this.fetchMappings();
+    await this.fetchFolders();
   }
 
   hideCloneMappingSection() {
@@ -842,7 +848,128 @@ class IICSAssistant {
     this.assistantPanel.querySelector("#createAssetsSubmenu").style.display =
       "block";
   }
+async fetchFolders() {
+  const folderSelect = this.assistantPanel.querySelector("#folderSelect");
 
+  // -----------------------------------------------------------------
+  // 1. Need a valid session token – server URL is hard‑coded later
+  // -----------------------------------------------------------------
+  if (!this.sessionToken) {
+    folderSelect.innerHTML = '<option value="">Please login first</option>';
+    this.showToast("Please login to fetch folders", "error");
+    return;
+  }
+
+  try {
+    folderSelect.innerHTML = '<option value="">Loading folders...</option>';
+    console.log("Session Token:", this.sessionToken);
+
+    // --------------------------------------------------------------
+    // 2. ENDPOINT – core/v3/objects, type==PROJECT (IICS “folder”)
+    // --------------------------------------------------------------
+    const apiUrl = `https://use4.dm-us.informaticacloud.com/saas/public/core/v3/objects?q=type=='PROJECT'&limit=200`;
+    console.log("Fetching folders from:", apiUrl);
+
+    // --------------------------------------------------------------
+    // 3. Headers – same as the curl you posted (both header forms)
+    // --------------------------------------------------------------
+    const myHeaders = new Headers();
+    myHeaders.append("Accept", "application/json");
+    myHeaders.append("Content-Type", "application/json");
+    myHeaders.append("INFA-SESSION-ID", this.sessionToken);
+    // The curl also sent a cookie – keep it if your session relies on it
+    // myHeaders.append("Cookie", "JSESSIONID=...; ...");   // optional
+
+    const requestOptions = {
+      method: "GET",
+      headers: myHeaders,
+      redirect: "follow",
+      credentials: "include",   // keep any cookie-based session alive
+      mode: "cors",
+    };
+
+    const response = await fetch(apiUrl, requestOptions);
+
+    // --------------------------------------------------------------
+    // 4. LOGGING
+    // --------------------------------------------------------------
+    console.log("Response status:", response.status);
+    console.log("Response URL (after redirect):", response.url);
+    console.log("Response content-type:", response.headers.get("content-type"));
+
+    // --------------------------------------------------------------
+    // 5. Detect login-page redirect (HTML) even on 200
+    // --------------------------------------------------------------
+    const contentType = response.headers.get("content-type") || "";
+    if (
+      response.url.includes("/identity-service/") ||
+      response.url.includes("/login") ||
+      contentType.includes("text/html")
+    ) {
+      const html = await response.text();
+      console.error("Received HTML (login page):", html.substring(0, 300));
+      throw new Error("Session invalid – redirected to login page");
+    }
+
+    // --------------------------------------------------------------
+    // 6. Must be JSON
+    // --------------------------------------------------------------
+    if (!contentType.includes("application/json")) {
+      const txt = await response.text();
+      console.error("Non-JSON payload:", txt.substring(0, 200));
+      throw new Error("Server returned non-JSON data");
+    }
+
+    // --------------------------------------------------------------
+    // 7. HTTP errors
+    // --------------------------------------------------------------
+    if (!response.ok) {
+      const errBody = await response.json().catch(() => ({}));
+      console.error("API error payload:", errBody);
+      throw new Error(
+        `HTTP ${response.status}: ${errBody.error?.message || "Unknown"}`
+      );
+    }
+
+    // --------------------------------------------------------------
+    // 8. Parse JSON
+    // --------------------------------------------------------------
+    let result;
+    try {
+      result = await response.json();
+    } catch (e) {
+      console.error("JSON parse failed:", e);
+      throw new Error("Invalid JSON from server");
+    }
+
+    console.log("API Response:", result);
+    const projects = Array.isArray(result.objects) ? result.objects : [];
+
+    // --------------------------------------------------------------
+    // 9. Populate dropdown
+    // --------------------------------------------------------------
+    if (projects.length === 0) {
+      folderSelect.innerHTML = '<option value="">No folders found</option>';
+      this.showToast("No folders found", "info");
+      return;
+    }
+
+    folderSelect.innerHTML = '<option value="">Select a folder...</option>';
+    projects.forEach((proj) => {
+      const opt = document.createElement("option");
+      opt.value = proj.id;
+      opt.textContent = proj.name || proj.id;
+      opt.dataset.project = JSON.stringify(proj);
+      folderSelect.appendChild(opt);
+    });
+
+    this.showToast(`Loaded ${projects.length} folder(s)`, "success");
+  } catch (error) {
+    console.error("Error fetching folders:", error);
+    folderSelect.innerHTML = '<option value="">Error loading folders</option>';
+    this.showToast("Failed to fetch folders: " + error.message, "error");
+  }
+}
   async fetchMappings() {
     const mappingSelect = this.assistantPanel.querySelector("#mappingSelect");
 
@@ -976,6 +1103,7 @@ class IICSAssistant {
         opt.textContent = mapping.name || mapping.id;
         opt.dataset.mapping = JSON.stringify(mapping);
         mappingSelect.appendChild(opt);
+        console.log("Added mapping template:", mapping.name);
       });
 
       this.showToast(
@@ -1027,7 +1155,7 @@ class IICSAssistant {
 
   async handleCloneMapping() {
     if (!this.selectedMapping) {
-      this.showToast("Please select a mapping first", "error");
+      this.showToast("Please select a mapping first ", "error");
       return;
     }
 
@@ -1036,7 +1164,7 @@ class IICSAssistant {
     console.log("Selected mapping to clone:", this.selectedMapping);
 
     // Future implementation will call the clone API
-    // await this.callCloneMappingAPI(this.selectedMapping);
+    //await this.callCloneMappingAPI(this.selectedMapping);
   }
 
   handleTaskFlowSelection(event) {
@@ -1056,62 +1184,69 @@ class IICSAssistant {
   }
 
   async handleRunSelectedTask() {
-    if (!this.selectedTaskFlow) {
-      this.showToast("Please select a task flow first", "error");
+    const taskFlowSelect = this.assistantPanel.querySelector("#taskFlowSelect");
+    const selectedOption = taskFlowSelect.selectedOptions[0];
+    
+    if (!selectedOption || !selectedOption.value) {
+      this.showToast("Please select a task to run", "error");
       return;
     }
-
+    
+    const runButton = this.assistantPanel.querySelector("#runSelectedTaskBtn");
+    const originalButtonText = runButton.innerHTML;
+    
     try {
-      // Disable the run button and show loading state
-      const runButton = this.runSelectedTaskBtn;
-      const originalText = runButton.innerHTML;
+      // Disable button and show loading state
       runButton.disabled = true;
-      runButton.innerHTML = '<span class="btn-spinner"></span> Running...';
-
-      // Prepare the request to run the task flow
+      runButton.innerHTML = '<span class="action-text">Running...</span>';
+      
       const myHeaders = new Headers();
       myHeaders.append("Content-Type", "application/json");
       myHeaders.append("Accept", "application/json");
-      myHeaders.append("INFA-SESSION-ID", this.sessionToken);
-      myHeaders.append("Cookie", `JSESSIONID=${this.getCookie("JSESSIONID")}`);
+      myHeaders.append("icSessionId", this.sessionToken);
+      myHeaders.append("Cookie", "JSESSIONID=9C6044C2B7A1D83536B735BF0AB56743; SERVERID_SAAS=IICS-saas_k8s_0; SERVERID_SAAS_K8S=\"9515b2ae6d88b56a\"");
+
+      const raw = JSON.stringify({
+        "@type": "job",
+        "taskId": selectedOption.value,
+        "taskType": "MTT",
+        "runtime": {
+          "@type": "mtTaskRuntime"
+        }
+      });
 
       const requestOptions = {
         method: "POST",
         headers: myHeaders,
-        body: JSON.stringify({
-          taskFlowId: this.selectedTaskFlow.id,
-          runParameters: {},
-        }),
-        redirect: "follow",
+        body: raw,
+        redirect: "follow"
       };
 
-      const response = await fetch(
-        `https://use4.dm-us.informaticacloud.com/active-bpel/public/v1/taskflows/${this.selectedTaskFlow.id}/run`,
-        requestOptions
-      );
+      const response = await fetch("https://use4.dm-us.informaticacloud.com/saas/api/v2/job", requestOptions);
+      const result = await response.json();
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(
-          error.message || `Failed to run task flow: ${response.status}`
-        );
+        throw new Error(result.message || 'Failed to start task');
       }
 
-      const result = await response.json();
-      this.showToast(
-        `Task flow started successfully! Run ID: ${result.runId}`,
-        "success"
-      );
-    } catch (error) {
-      console.error("Error running task flow:", error);
-      this.showToast(`Failed to run task flow: ${error.message}`, "error");
-    } finally {
-      // Reset button state
-      if (this.runSelectedTaskBtn) {
-        this.runSelectedTaskBtn.disabled = false;
-        this.runSelectedTaskBtn.innerHTML = "Run Selected Task";
+      this.showToast("Task started successfully!", "success");
+      console.log("Task execution started:", result);
+      
+      // You might want to store the job ID for status checking later
+      if (result.jobId) {
+        // Store or handle the job ID as needed
+        console.log("Job ID:", result.jobId);
       }
+      
+    } catch (error) {
+      console.error('Error running task:', error);
+      this.showToast(`Failed to start task: ${error.message}`, 'error');
+    } finally {
+      // Re-enable button and restore text
+      runButton.disabled = false;
+      runButton.innerHTML = originalButtonText;
     }
+
   }
 
   // Helper method to get cookie value by name
@@ -1126,35 +1261,34 @@ class IICSAssistant {
   async showRunTaskSection() {
     // Hide actions and show run task section
     this.assistantPanel.querySelector("#actionsSection").style.display = "none";
-    this.assistantPanel.querySelector("#runTaskSection").style.display =
-      "block";
+    this.assistantPanel.querySelector("#runTaskSection").style.display = "block";
 
-    // Enable the task flow select and load button
+    // Get UI elements
     const taskFlowSelect = this.assistantPanel.querySelector("#taskFlowSelect");
-    const loadTaskFlowsBtn =
-      this.assistantPanel.querySelector("#loadTaskFlowsBtn");
-
-    taskFlowSelect.innerHTML =
-      '<option value="">Click "Load Task Flows" to begin</option>';
+    
+    // Set initial UI state
+    taskFlowSelect.innerHTML = '<option value="">Loading tasks...</option>';
     taskFlowSelect.disabled = true;
-    loadTaskFlowsBtn.disabled = false;
 
     // Store reference to the run button for later use
-    this.runSelectedTaskBtn = this.assistantPanel.querySelector(
-      "#runSelectedTaskBtn"
-    );
+    this.runSelectedTaskBtn = this.assistantPanel.querySelector("#runSelectedTaskBtn");
     this.runSelectedTaskBtn.disabled = true;
 
     // Add event listeners if not already added
-    if (!this.taskFlowEventsBound) {
-      loadTaskFlowsBtn.addEventListener("click", () => this.fetchTaskFlows());
-      taskFlowSelect.addEventListener("change", (e) =>
-        this.handleTaskFlowSelection(e)
-      );
-      this.runSelectedTaskBtn.addEventListener("click", () =>
-        this.handleRunSelectedTask()
-      );
-      this.taskFlowEventsBound = true;
+    // if (!this.taskFlowEventsBound) {
+    //   taskFlowSelect.addEventListener("change", (e) => this.handleTaskFlowSelection(e));
+    //   this.runSelectedTaskBtn.addEventListener("click", () => this.handleRunSelectedTask());
+    //   this.taskFlowEventsBound = true;
+    // }
+    
+    // Automatically fetch task flows
+    try {
+      await this.fetchTaskFlows();
+    } catch (error) {
+      console.error('Error loading task flows:', error);
+      taskFlowSelect.innerHTML = '<option value="">Error loading tasks. Please refresh the page.</option>';
+      taskFlowSelect.disabled = false;
+      this.showToast('Failed to load tasks. Please refresh the page.', 'error');
     }
   }
 
@@ -1168,8 +1302,6 @@ class IICSAssistant {
   // Fetch task flows from IICS
   async fetchTaskFlows() {
     const taskFlowSelect = this.assistantPanel.querySelector("#taskFlowSelect");
-    const loadTaskFlowsBtn =
-      this.assistantPanel.querySelector("#loadTaskFlowsBtn");
 
     if (!this.sessionToken) {
       taskFlowSelect.innerHTML = '<option value="">Please login first</option>';
@@ -1179,63 +1311,72 @@ class IICSAssistant {
 
     try {
       taskFlowSelect.disabled = true;
-      loadTaskFlowsBtn.disabled = true;
-      loadTaskFlowsBtn.innerHTML =
-        '<span class="action-text">Loading...</span>';
 
       const myHeaders = new Headers();
-      myHeaders.append("Content-Type", "application/json");
       myHeaders.append("Accept", "application/json");
-      myHeaders.append("INFA-SESSION-ID", this.sessionToken);
+      myHeaders.append("Content-Type", "application/json");
+      myHeaders.append("icSessionId", this.sessionToken);
       myHeaders.append(
         "Cookie",
-        "JSESSIONID=48F6267F8A5FBFA5DC61A441430A4BDA; SERVERID_SAAS=IICS-saas_k8s_0; SERVERID_SAAS_K8S=0e2b3c5386f4e2d9"
+        "JSESSIONID=9C6044C2B7A1D83536B735BF0AB56743; SERVERID_SAAS=IICS-saas_k8s_0; SERVERID_SAAS_K8S=\"9515b2ae6d88b56a\""
       );
 
       const requestOptions = {
         method: "GET",
         headers: myHeaders,
-        redirect: "follow",
+        redirect: "follow"
       };
 
+      console.log('Fetching mapping tasks...');
       const response = await fetch(
-        "https://use4.dm-us.informaticacloud.com/saas/public/core/v3/objects?q=type=='TaskFlow'",
+        "https://use4.dm-us.informaticacloud.com/saas/api/v2/mttask/",
         requestOptions
       );
-      const result = await response.text();
+      
+      console.log('Response status:', response.status);
+      const result = await response.json(); // Changed to response.json() since we expect JSON
+      console.log('Response data:', result);
 
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${result}`);
+        throw new Error(`HTTP ${response.status}: ${JSON.stringify(result)}`);
       }
 
-      const data = JSON.parse(result);
-
-      if (data.objects && data.objects.length > 0) {
-        taskFlowSelect.innerHTML =
-          '<option value="">Select a task flow...</option>';
-        data.objects.forEach((taskFlow) => {
-          const opt = document.createElement("option");
-          opt.value = taskFlow.id;
-          opt.textContent = taskFlow.path || taskFlow.id;
-          opt.dataset.taskFlow = JSON.stringify(taskFlow);
-          taskFlowSelect.appendChild(opt);
+      // Clear existing options
+      taskFlowSelect.innerHTML = '<option value="">Select a mapping task...</option>';
+      
+      // Check if result is an array or has a different structure
+      const tasks = Array.isArray(result) ? result : (result.tasks || result.items || []);
+      
+      if (tasks && tasks.length > 0) {
+        //console.log(`Found ${tasks.length} mapping tasks`);
+        
+        tasks.forEach((task) => {
+          try {
+            const opt = document.createElement("option");
+            const taskId = task.id || task.taskId || 'unknown';
+            const taskName = task.name || task.taskName || 'Unnamed Task';
+            
+            opt.value = taskId;
+            opt.textContent = `${taskName}`;
+            opt.dataset.taskFlow = JSON.stringify(task);
+            taskFlowSelect.appendChild(opt);
+          } catch (error) {
+            console.error('Error processing task:', task, error);
+          }
         });
+        
         taskFlowSelect.disabled = false;
-        this.showToast(`Loaded ${data.objects.length} task flows`, "success");
+        this.showToast(`Loaded ${tasks.length} mapping tasks`, "success");
       } else {
-        taskFlowSelect.innerHTML =
-          '<option value="">No task flows found</option>';
-        this.showToast("No task flows found", "info");
+        console.log('No mapping tasks found in response');
+        taskFlowSelect.innerHTML = '<option value="">No mapping tasks found</option>';
+        this.showToast("No mapping tasks found", "info");
       }
     } catch (error) {
       console.error("Error fetching task flows:", error);
       taskFlowSelect.innerHTML =
         '<option value="">Error loading task flows</option>';
       this.showToast("Failed to fetch task flows: " + error.message, "error");
-    } finally {
-      loadTaskFlowsBtn.disabled = false;
-      loadTaskFlowsBtn.innerHTML =
-        '<span class="action-text">Load Task Flows</span>';
     }
   }
 
