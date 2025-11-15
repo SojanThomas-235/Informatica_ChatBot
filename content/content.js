@@ -237,6 +237,13 @@ class IICSAssistant {
                                     <div class="submenu-desc">Create a new mapping task</div>
                                 </div>
                             </button>
+                            <button class="submenu-item" data-submenu-action="clone-task">
+                                <span class="submenu-icon">📋</span>
+                                <div class="submenu-text">
+                                    <div class="submenu-title">Clone Task</div>
+                                    <div class="submenu-desc">Create a copy of an existing task</div>
+                                </div>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -280,6 +287,50 @@ class IICSAssistant {
                             </div>
                             <button class="action-btn" id="cloneMappingBtn" style="margin-top: 15px; width: 100%;" disabled>
                                 <span class="action-text">Clone Selected Mapping</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Clone Task Section -->
+                <div id="cloneTaskSection" style="display: none;">
+                    <div class="submenu-section">
+                        <div class="submenu-header">
+                            <h3>Clone Task</h3>
+                            <button class="back-btn" id="backToCreateAssetsTask">
+                                <span class="back-icon">◀</span>
+                                <span>Back</span>
+                            </button>
+                        </div>
+                        <div class="submenu-content">
+                            <div class="form-group">
+                                <label for="taskSelect">Select Task:</label>
+                                <select id="taskSelect" class="iics-select-box">
+                                    <option value="">Loading tasks...</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="taskFolderSelect">Target Folder:</label>
+                                <select id="taskFolderSelect" class="iics-select-box">
+                                    <option value="">Loading folders...</option>
+                                </select>
+                            </div>
+                            <div id="taskDetails" style="display: none; margin-top: 15px;">
+                                <div class="mapping-detail-item">
+                                    <strong>Type:</strong>
+                                    <span id="taskType"></span>
+                                </div>
+                                <div class="mapping-detail-item">
+                                    <strong>Created:</strong>
+                                    <span id="taskCreateTime"></span>
+                                </div>
+                                <div class="mapping-detail-item">
+                                    <strong>Updated:</strong>
+                                    <span id="taskUpdateTime"></span>
+                                </div>
+                            </div>
+                            <button class="action-btn" id="cloneTaskBtn" style="margin-top: 15px; width: 100%;" disabled>
+                                <span class="action-text">Clone Selected Task</span>
                             </button>
                         </div>
                     </div>
@@ -400,6 +451,14 @@ class IICSAssistant {
         this.hideCloneMappingSection()
       );
     }
+    
+    // Clone task back button
+    const backToCreateAssetsBtn2 = panel.querySelector("#backToCreateAssetsTask");
+    if (backToCreateAssetsBtn2) {
+      backToCreateAssetsBtn2.addEventListener("click", () =>
+        this.hideCloneTaskSection()
+      );
+    }
 
     // Run task back button
     const backToActionsFromRunTaskBtn = panel.querySelector(
@@ -442,6 +501,34 @@ class IICSAssistant {
         this.handleCloneMapping()
       );
     }
+    
+    // Clone task button
+    const cloneTaskBtn = panel.querySelector("#cloneTaskBtn");
+    if (cloneTaskBtn) {
+      cloneTaskBtn.addEventListener("click", () =>
+        this.handleCloneTask()
+      );
+    }
+    
+    // Task select change handler
+    const taskSelect = panel.querySelector("#taskSelect");
+    if (taskSelect) {
+      taskSelect.addEventListener("change", (e) =>
+        this.handleTaskSelection(e)
+      );
+    }
+    
+    // Task folder select change handler
+    const taskFolderSelect = panel.querySelector("#taskFolderSelect");
+    if (taskFolderSelect) {
+      taskFolderSelect.addEventListener("change", () => {
+        const taskSelect = panel.querySelector("#taskSelect");
+        const cloneTaskBtn = panel.querySelector("#cloneTaskBtn");
+        if (cloneTaskBtn) {
+          cloneTaskBtn.disabled = !(taskSelect && taskSelect.value && taskFolderSelect.value);
+        }
+      });
+    }
 
     // Submenu action buttons
     panel.querySelectorAll(".submenu-item").forEach((btn) => {
@@ -458,6 +545,7 @@ class IICSAssistant {
     const actionsSection = this.assistantPanel.querySelector("#actionsSection");
     const createAssetsSubmenu = this.assistantPanel.querySelector("#createAssetsSubmenu");
     const cloneMappingSection = this.assistantPanel.querySelector("#cloneMappingSection");
+    const cloneTaskSection = this.assistantPanel.querySelector("#cloneTaskSection") || { style: { display: 'none'} };
     const runTaskSection = this.assistantPanel.querySelector("#runTaskSection");
     const settingsSection = this.assistantPanel.querySelector("#settingsSection");
     // Hide both sections initially
@@ -465,6 +553,7 @@ class IICSAssistant {
     actionsSection.style.display = "none";
     createAssetsSubmenu.style.display = "none";
     cloneMappingSection.style.display = "none";
+    cloneTaskSection.style.display = "none";
     runTaskSection.style.display = "none";
     settingsSection.style.display = "none";
     // Check if we have saved session token
@@ -819,6 +908,11 @@ class IICSAssistant {
       await this.showCloneMappingSection();
       return;
     }
+    
+    if (action === "clone-task") {
+      await this.showCloneTaskSection();
+      return;
+    }
 
     // For other actions, show coming soon messages
     const actionMessages = {
@@ -842,26 +936,53 @@ class IICSAssistant {
     await this.fetchFolders();
   }
 
+  async showCloneTaskSection() {
+    // Hide create assets submenu and show clone task section
+    this.assistantPanel.querySelector("#createAssetsSubmenu").style.display =
+      "none";
+    this.assistantPanel.querySelector("#cloneTaskSection").style.display =
+      "block";
+    this.assistantPanel.querySelector("#actionsSection").style.display =
+      "none";
+    // Fetch tasks
+    await this.fetchTasks();
+    await this.fetchFolders();
+  }
+
   hideCloneMappingSection() {
     this.assistantPanel.querySelector("#cloneMappingSection").style.display =
       "none";
     this.assistantPanel.querySelector("#createAssetsSubmenu").style.display =
       "block";
   }
+
+  hideCloneTaskSection() {
+    this.assistantPanel.querySelector("#cloneTaskSection").style.display =
+      "none";
+    this.assistantPanel.querySelector("#createAssetsSubmenu").style.display =
+      "block";
+  }
 async fetchFolders() {
   const folderSelect = this.assistantPanel.querySelector("#folderSelect");
+  const taskFolderSelect = this.assistantPanel.querySelector("#taskFolderSelect");
 
   // -----------------------------------------------------------------
   // 1. Need a valid session token – server URL is hard‑coded later
   // -----------------------------------------------------------------
   if (!this.sessionToken) {
     folderSelect.innerHTML = '<option value="">Please login first</option>';
+    if (taskFolderSelect) {
+      taskFolderSelect.innerHTML = '<option value="">Please login first</option>';
+    }
     this.showToast("Please login to fetch folders", "error");
     return;
   }
 
   try {
     folderSelect.innerHTML = '<option value="">Loading folders...</option>';
+    if (taskFolderSelect) {
+      taskFolderSelect.innerHTML = '<option value="">Loading folders...</option>';
+    }
     console.log("Session Token:", this.sessionToken);
 
     // --------------------------------------------------------------
@@ -944,38 +1065,254 @@ async fetchFolders() {
 
     console.log("API Response:", result);
     const projects = Array.isArray(result.objects) ? result.objects : [];
+    
+    // Log the first project to check its structure
+    if (projects.length > 0) {
+      console.log("Sample project object:", projects[0]);
+    }
 
     // --------------------------------------------------------------
     // 9. Populate dropdown
     // --------------------------------------------------------------
     if (projects.length === 0) {
       folderSelect.innerHTML = '<option value="">No folders found</option>';
+      if (taskFolderSelect) {
+        taskFolderSelect.innerHTML = '<option value="">No folders found</option>';
+      }
       this.showToast("No folders found", "info");
       return;
     }
 
     folderSelect.innerHTML = '<option value="">Select a folder...</option>';
+    if (taskFolderSelect) {
+      taskFolderSelect.innerHTML = '<option value="">Select a folder...</option>';
+    }
+    
     projects.forEach((proj) => {
+      // Try to get the folder name from different possible properties
+      const folderName = proj.name || proj.displayName || proj.path || proj.id;
+      
+      // Add to main folder select
       const opt = document.createElement("option");
-      opt.value = proj.id;
-      opt.textContent = proj.name || proj.id;
+      opt.value = folderName;
+      opt.textContent = folderName;
       opt.dataset.project = JSON.stringify(proj);
       folderSelect.appendChild(opt);
+      
+      // Also add to task folder select if it exists
+      if (taskFolderSelect) {
+        const taskOpt = document.createElement("option");
+        taskOpt.value = folderName;
+        taskOpt.textContent = folderName;
+        taskOpt.dataset.folder = JSON.stringify(proj);
+        taskFolderSelect.appendChild(taskOpt);
+      }
+      
+      console.log("Added folder:", proj.name);
     });
 
     this.showToast(`Loaded ${projects.length} folder(s)`, "success");
   } catch (error) {
     console.error("Error fetching folders:", error);
     folderSelect.innerHTML = '<option value="">Error loading folders</option>';
+    if (taskFolderSelect) {
+      taskFolderSelect.innerHTML = '<option value="">Error loading folders</option>';
+    }
     this.showToast("Failed to fetch folders: " + error.message, "error");
   }
 }
+  // Helper method to make API requests through the background script
+  async makeApiRequest(url, options = {}) {
+    return new Promise((resolve, reject) => {
+      chrome.runtime.sendMessage({
+        type: 'API_REQUEST',
+        payload: {
+          url,
+          method: options.method || 'GET',
+          headers: {
+            ...options.headers,
+            'INFA-SESSION-ID': this.sessionToken
+          },
+          body: options.body
+        }
+      }, (response) => {
+        if (chrome.runtime.lastError) {
+          reject(new Error(chrome.runtime.lastError.message));
+          return;
+        }
+        
+        if (response && response.success) {
+          resolve(response.data);
+        } else {
+          reject(new Error(response?.error || 'Request failed'));
+        }
+      });
+    });
+  }
+
+async fetchTasks() {
+  const taskSelect = this.assistantPanel.querySelector("#taskSelect");
+  const taskFolderSelect = this.assistantPanel.querySelector("#taskFolderSelect");
+
+  // Check authentication status first
+  await this.checkAuthStatus();
+  
+  if (!this.isAuthenticated) {
+    taskSelect.innerHTML = '<option value="">Please login first</option>';
+    if (taskFolderSelect) {
+      taskFolderSelect.innerHTML = '<option value="">Please login first</option>';
+    }
+    this.showToast("Please login to fetch tasks", "error");
+    return;
+  }
+
+  try {
+    taskSelect.innerHTML = '<option value="">Loading mapping tasks...</option>';
+    
+    // Get session token - check both session storage and local storage
+    let icSessionId = this.sessionToken;
+    
+    if (!icSessionId) {
+      // Try to get from chrome.storage.local
+      const storage = await chrome.storage.local.get(['icSessionId', 'iics_session_token']);
+      icSessionId = storage.icSessionId || storage.iics_session_token;
+      
+      // If still not found, check if we have a valid session
+      if (!icSessionId) {
+        // Try to get from cookies as a last resort
+        const cookies = await chrome.cookies.getAll({ domain: '.informaticacloud.com' });
+        const sessionCookie = cookies.find(c => c.name === 'JSESSIONID' || c.name.includes('SESSION'));
+        
+        if (sessionCookie) {
+          icSessionId = sessionCookie.value;
+        } else {
+          // If we still don't have a session, show login interface
+          this.showToast('Session expired. Please login again.', 'error');
+          this.showLoginInterface();
+          return;
+        }
+      }
+      
+      // Cache the session token for future use
+      this.sessionToken = icSessionId;
+    }
+
+    // Build the API URL
+    const apiUrl = 'https://use4.dm-us.informaticacloud.com/saas/api/v2/mttask';
+    console.log('Fetching tasks from:', apiUrl);
+
+    // Make the API request with multiple possible authentication methods
+    const headers = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    };
+    
+    // Try with both header names that IICS might expect
+    headers['icSessionId'] = icSessionId;
+    headers['INFA-SESSION-ID'] = icSessionId;
+    
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: headers,
+      credentials: 'include'
+    });
+
+    // Check if response is HTML (likely a login page)
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('text/html')) {
+      const text = await response.text();
+      if (text.includes('login') || text.includes('signin')) {
+        throw new Error('Session expired. Please login again.');
+      }
+      throw new Error('Received HTML response instead of JSON');
+    }
+
+    // Parse JSON response
+    let responseData;
+    try {
+      responseData = await response.json();
+      console.log('API response:', responseData);
+    } catch (e) {
+      console.error('Failed to parse JSON response:', e);
+      throw new Error('Invalid response format from server');
+    }
+
+    if (!response.ok) {
+      throw new Error(responseData.message || `HTTP ${response.status}: Failed to fetch tasks`);
+    }
+
+    // Handle different response formats
+    const tasks = Array.isArray(responseData) ? responseData : 
+                 (responseData.tasks ? responseData.tasks : []);
+    
+    console.log('Total tasks received:', tasks.length);
+    
+    // Filter for mapping tasks
+    const mappingTasks = tasks.filter(task => {
+      if (!task || !task.id) return false;
+      
+      // Access @type property (use bracket notation for properties starting with @)
+      const taskType = task['@type'];
+      
+      // Log task details for debugging
+      console.log('Processing task:', {
+        id: task.id,
+        name: task.name,
+        '@type': taskType,
+        type: task.type,
+        taskType: task.taskType
+      });
+      
+      // Check if it's a mapping task
+      // The @type property should be "mtTask" for mapping tasks
+      return taskType === 'mtTask' || 
+             task.type === 'MTT_MAPPING' || 
+             task.taskType === 'MTT_MAPPING' ||
+             task.type === 'mtTask';
+    });
+    
+    // Now we can safely log the count AFTER the filter completes
+    console.log('Total mapping tasks found:', mappingTasks.length);
+
+    // Update the dropdown
+    taskSelect.innerHTML = mappingTasks.length > 0 
+      ? '<option value="">Select a mapping task...</option>'
+      : '<option value="">No mapping tasks found</option>';
+    
+    // Add tasks to dropdown
+    mappingTasks.forEach(task => {
+      const option = document.createElement("option");
+      option.value = task.id;
+      option.textContent = task.name || `Mapping Task (${task.id})`;
+      option.dataset.task = JSON.stringify(task);
+      taskSelect.appendChild(option);
+      
+      console.log('Added task to dropdown:', { 
+        id: task.id, 
+        name: task.name,
+        type: task.type || task.taskType
+      });
+    });
+
+    console.log('Task selection dropdown updated with', mappingTasks.length, 'mapping tasks');
+    this.showToast(`Loaded ${mappingTasks.length} mapping task(s)`, "success");
+    
+  } catch (error) {
+    console.error("Error fetching tasks:", error);
+    taskSelect.innerHTML = '<option value="">Error loading tasks</option>';
+    
+    if (error.message.includes('Session expired') || error.message.includes('401')) {
+      this.showToast("Your session has expired. Please login again.", "error");
+      this.showLoginInterface();
+    } else {
+      this.showToast(`Failed to fetch tasks: ${error.message}`, "error");
+    }
+  }
+}
+
   async fetchMappings() {
     const mappingSelect = this.assistantPanel.querySelector("#mappingSelect");
 
-    // -----------------------------------------------------------------
-    // 1. Need a valid session token – server URL is hard‑coded later
-    // -----------------------------------------------------------------
     if (!this.sessionToken) {
       mappingSelect.innerHTML = '<option value="">Please login first</option>';
       this.showToast("Please login to fetch mappings", "error");
@@ -984,137 +1321,106 @@ async fetchFolders() {
 
     try {
       mappingSelect.innerHTML = '<option value="">Loading mappings...</option>';
-
       console.log("Session Token:", this.sessionToken);
 
-      // --------------------------------------------------------------
-      // 2. HARDCODED ENDPOINT – exactly as you had originally
-      // --------------------------------------------------------------
-      const apiUrl = `https://use4.dm-us.informaticacloud.com/saas/api/v2/mapping/`;
-      console.log("Fetching mappings from:", apiUrl);
+      // Use the makeApiRequest helper method which handles authentication and errors
+      const response = await this.makeApiRequest("/saas/api/v2/mapping/");
+      
+      console.log("Mappings API Response:", response);
 
-      // --------------------------------------------------------------
-      // 3. Headers – both forms are sent (some pods need one, some the other)
-      // --------------------------------------------------------------
-      const myHeaders = new Headers();
-      myHeaders.append("Accept", "application/json");
-      myHeaders.append("Content-Type", "application/json");
-      myHeaders.append("icSessionId", this.sessionToken);
-      myHeaders.append("INFA-SESSION-ID", this.sessionToken);
-
-      const requestOptions = {
-        method: "GET",
-        headers: myHeaders,
-        redirect: "follow",
-        credentials: "include", // keeps any cookie‑based session alive
-        mode: "cors",
-      };
-
-      const response = await fetch(apiUrl, requestOptions);
-
-      // --------------------------------------------------------------
-      // 4. LOGGING (helps you see what actually came back)
-      // --------------------------------------------------------------
-      console.log("Response status:", response.status);
-      console.log("Response URL (after redirect):", response.url);
-      console.log(
-        "Response content-type:",
-        response.headers.get("content-type")
-      );
-
-      // --------------------------------------------------------------
-      // 5. Detect login‑page redirect (HTML) even on 200
-      // --------------------------------------------------------------
-      const contentType = response.headers.get("content-type") || "";
-      if (
-        response.url.includes("/identity-service/") ||
-        response.url.includes("/login") ||
-        contentType.includes("text/html")
-      ) {
-        const html = await response.text();
-        console.error(
-          "Received HTML (probably login page):",
-          html.substring(0, 300)
-        );
-        throw new Error("Session invalid – redirected to login page");
+      // Handle different response structures
+      let mappings = [];
+      if (Array.isArray(response)) {
+        mappings = response;
+      } else if (response && response.mappings) {
+        mappings = response.mappings;
+      } else if (response && response.items) {
+        mappings = response.items;
+      } else if (response && response.data) {
+        mappings = response.data;
+      } else if (typeof response === 'object' && response !== null) {
+        // If response is an object but not in expected format, try to extract values
+        mappings = Object.values(response);
       }
 
-      // --------------------------------------------------------------
-      // 6. Must be JSON
-      // --------------------------------------------------------------
-      if (!contentType.includes("application/json")) {
-        const txt = await response.text();
-        console.error("Non‑JSON payload:", txt.substring(0, 200));
-        throw new Error("Server returned non‑JSON data");
-      }
+      console.log("Processed mappings:", mappings);
 
-      // --------------------------------------------------------------
-      // 7. HTTP errors
-      // --------------------------------------------------------------
-      if (!response.ok) {
-        const errBody = await response.json().catch(() => ({}));
-        console.error("API error payload:", errBody);
-        throw new Error(
-          `HTTP ${response.status}: ${errBody.error?.message || "Unknown"}`
-        );
-      }
-
-      // --------------------------------------------------------------
-      // 8. Parse JSON
-      // --------------------------------------------------------------
-      let result;
-      try {
-        result = await response.json();
-      } catch (e) {
-        console.error("JSON parse failed:", e);
-        throw new Error("Invalid JSON from server");
-      }
-
-      console.log("API Response:", result);
-      console.log("Is array?", Array.isArray(result));
-
-      // --------------------------------------------------------------
-      // 9. Populate dropdown – same logic you already had
-      // --------------------------------------------------------------
-      const mappings = Array.isArray(result) ? result : [];
-
-      if (mappings.length === 0) {
-        mappingSelect.innerHTML = '<option value="">No mappings found</option>';
-        this.showToast("No mappings found", "info");
+      if (!mappings || mappings.length === 0) {
+        mappingSelect.innerHTML = '<option value="">No mapping tasks found</option>';
+        this.showToast("No mapping tasks found in the response", "info");
         return;
       }
 
-      const mappingTemplates = mappings.filter(
-        (m) => m["@type"] === "mappingTemplate"
-      );
-      console.log("Mapping templates count:", mappingTemplates.length);
-
-      if (mappingTemplates.length === 0) {
-        mappingSelect.innerHTML =
-          '<option value="">No mapping templates found</option>';
-        this.showToast("No mapping templates found", "info");
-        return;
-      }
-
-      mappingSelect.innerHTML = '<option value="">Select a mapping...</option>';
-      mappingTemplates.forEach((mapping) => {
-        const opt = document.createElement("option");
-        opt.value = mapping.id;
-        opt.textContent = mapping.name || mapping.id;
-        opt.dataset.mapping = JSON.stringify(mapping);
-        mappingSelect.appendChild(opt);
-        console.log("Added mapping template:", mapping.name);
+      // Clear previous options
+      mappingSelect.innerHTML = '<option value="">Select a mapping task...</option>';
+      
+      // Add each mapping as an option
+      mappings.forEach((mapping) => {
+        try {
+          // Handle different possible property names for ID and name
+          const id = mapping.id || mapping.mappingId || mapping.taskId || '';
+          const name = mapping.name || mapping.mappingName || mapping.taskName || `Mapping ${id}`;
+          
+          if (id) {
+            const opt = document.createElement("option");
+            opt.value = id;
+            opt.textContent = name;
+            opt.dataset.mapping = JSON.stringify(mapping);
+            mappingSelect.appendChild(opt);
+            console.log("Added mapping:", name);
+          }
+        } catch (error) {
+          console.error("Error processing mapping:", error, mapping);
+        }
       });
 
+      if (mappingSelect.options.length <= 1) { // Only the default option
+        mappingSelect.innerHTML = '<option value="">No valid mapping tasks found</option>';
+        this.showToast("No valid mapping tasks found in the response", "info");
+        return;
+      }
+
       this.showToast(
-        `Loaded ${mappingTemplates.length} mapping templates`,
+        `Loaded ${mappingSelect.options.length - 1} mapping tasks`,
         "success"
       );
     } catch (error) {
       console.error("Error fetching mappings:", error);
-      mappingSelect.innerHTML =
-        '<option value="">Error loading mappings</option>';
-      this.showToast("Failed to fetch mappings: " + error.message, "error");
+      mappingSelect.innerHTML = `<option value="">Error: ${error.message || 'Failed to load mappings'}</option>`;
+      this.showToast("Failed to fetch mappings: " + (error.message || 'Unknown error'), "error");
+    }
+  }
+
+  handleTaskSelection(event) {
+    const selectedOption = event.target.selectedOptions[0];
+    const taskDetails = this.assistantPanel.querySelector("#taskDetails");
+    const cloneTaskBtn = this.assistantPanel.querySelector("#cloneTaskBtn");
+
+    if (!selectedOption.value) {
+      taskDetails.style.display = "none";
+      cloneTaskBtn.disabled = true;
+      return;
+    }
+
+    try {
+      const task = JSON.parse(selectedOption.dataset.task);
+      
+      // Update task details
+      this.assistantPanel.querySelector("#taskType").textContent = task.type || 'N/A';
+      this.assistantPanel.querySelector("#taskCreateTime").textContent = 
+        task.createTime ? new Date(task.createTime).toLocaleString() : 'N/A';
+      this.assistantPanel.querySelector("#taskUpdateTime").textContent = 
+        task.updateTime ? new Date(task.updateTime).toLocaleString() : 'N/A';
+      
+      taskDetails.style.display = "block";
+      cloneTaskBtn.disabled = !this.assistantPanel.querySelector("#taskFolderSelect").value;
+      
+      // Store selected task
+      this.selectedTask = task;
+    } catch (error) {
+      console.error("Error parsing task data:", error);
+      taskDetails.style.display = "none";
+      cloneTaskBtn.disabled = true;
     }
   }
 
@@ -1165,6 +1471,59 @@ async fetchFolders() {
 
     // Future implementation will call the clone API
     //await this.callCloneMappingAPI(this.selectedMapping);
+  }
+
+  async handleCloneTask() {
+    const taskSelect = this.assistantPanel.querySelector("#taskSelect");
+    const folderSelect = this.assistantPanel.querySelector("#taskFolderSelect");
+    const cloneBtn = this.assistantPanel.querySelector("#cloneTaskBtn");
+
+    if (!taskSelect.value || !folderSelect.value) {
+      this.showToast("Please select both a task and a target folder", "error");
+      return;
+    }
+
+    try {
+      cloneBtn.disabled = true;
+      cloneBtn.innerHTML = '<span class="spinner"></span> Cloning...';
+
+      // Get the selected task data
+      const selectedOption = taskSelect.selectedOptions[0];
+      const task = JSON.parse(selectedOption.dataset.task);
+      
+      // Get the selected folder data
+      const folderOption = folderSelect.selectedOptions[0];
+      const folder = JSON.parse(folderOption.dataset.folder);
+
+      // Prepare the clone request
+      const apiUrl = `https://use4.dm-us.informaticacloud.com/saas/api/v2/mttask/${task.id}?expand=all`;
+      
+      // Use the makeApiRequest helper to handle the API call
+      await this.makeApiRequest(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: {
+          name: `${task.name} (Copy)`,
+          projectId: folder.id
+        }
+      });
+      
+      this.showToast("Task cloned successfully!", "success");
+      
+      // Reset the form
+      taskSelect.value = "";
+      folderSelect.value = "";
+      this.assistantPanel.querySelector("#taskDetails").style.display = "none";
+      
+    } catch (error) {
+      console.error("Error cloning task:", error);
+      this.showToast(`Failed to clone task: ${error.message}`, "error");
+    } finally {
+      cloneBtn.disabled = false;
+      cloneBtn.innerHTML = '<span class="action-text">Clone Selected Task</span>';
+    }
   }
 
   handleTaskFlowSelection(event) {
