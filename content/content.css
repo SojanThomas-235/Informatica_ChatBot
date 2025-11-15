@@ -27,6 +27,7 @@
 }
 #iics-assistant-panel input.iics-text-box{
     height:40px!important;
+    padding:8px!important;
 }
 #iics-assistant-panel  select.iics-select-box{
     height:40px!important;
@@ -347,7 +348,7 @@
     gap: 8px !important;
 }
 
-.action-btn {
+.action-btn , .triggring-action-btn{
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
@@ -363,12 +364,12 @@
     font-weight: 500 !important;
 }
 
-.action-btn:hover {
+.action-btn:hover , .triggring-action-btn:hover {
     transform: translateY(-2px) !important;
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
 }
 
-.action-btn:active {
+.action-btn:active , .triggring-action-btn:active {
     transform: translateY(0) !important;
 }
 
@@ -898,7 +899,7 @@
     display: block !important;
 }
 
-#cloneMappingBtn:disabled {
+#cloneMappingBtn:disabled , #runSelectedTaskBtn:disabled {
     opacity: 0.5 !important;
     cursor: not-allowed !important;
     transform: none !important;
