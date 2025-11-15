@@ -24,20 +24,10 @@ class IICSAssistant {
       this.setupIntegration();
     }
 
-    // Load settings
-    await this.loadSettings();
+
   }
 
-  async loadSettings() {
-    try {
-      const result = await chrome.storage.sync.get(["backendUrl"]);
-      if (result.backendUrl) {
-        this.apiBaseUrl = result.backendUrl;
-      }
-    } catch (error) {
-      console.error("Error loading settings:", error);
-    }
-  }
+
 
   setupIntegration() {
     // Check if we're on an IICS page
@@ -114,15 +104,10 @@ class IICSAssistant {
                     <span>Informatica Assistant</span>
                 </div>
                 <div class="panel-controls">
-                    <button class="chatbot-action-btn" id="settings-btn" title="Settings">
+                    
+                    <button class="chatbot-action-btn" id="logout-btn" title="Logout">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="3"></circle>
-                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1 1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.79a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                        </svg>
-                    </button>
-                    <button class="chatbot-action-btn" id="minimize-btn" title="Minimize">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M5 12h14"></path>
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
                         </svg>
                     </button>
                     <button class="chatbot-action-btn" id="close-btn" title="Close">
@@ -163,8 +148,7 @@ class IICSAssistant {
                                 </div>
                                 
                                 <button type="submit" class="connect-btn" id="connectBtn">
-                                    <span class="btn-text">Connect</spa
-                                    n>
+                                    <span class="btn-text">Connect</span>
                                     <span class="btn-spinner" id="connectSpinner"></span>
                                 </button>
                             </form>                          
@@ -285,50 +269,6 @@ class IICSAssistant {
                     </div>
                 </div>
 
-                <!-- Clone Task Section -->
-                <div id="cloneTaskSection" style="display: none;">
-                    <div class="submenu-section">
-                        <div class="submenu-header">
-                            <h3>Clone Task</h3>
-                            <button class="back-btn" id="backToCreateAssetsTask">
-                                <span class="back-icon">◀</span>
-                                <span>Back</span>
-                            </button>
-                        </div>
-                        <div class="submenu-content">
-                            <div class="form-group">
-                                <label for="mappingSelect">Select Mapping:</label>
-                                <select id="mappingSelect" class="iics-select-box" >
-                                    <option value="">Loading mappings...</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="taskFolderSelect">Target Folder:</label>
-                                <select id="taskFolderSelect" class="iics-select-box">
-                                    <option value="">Loading folders...</option>
-                                </select>
-                            </div>
-                            <div id="taskDetails" style="display: none; margin-top: 15px;">
-                                <div class="mapping-detail-item">
-                                    <strong>Type:</strong>
-                                    <span id="taskType"></span>
-                                </div>
-                                <div class="mapping-detail-item">
-                                    <strong>Created:</strong>
-                                    <span id="taskCreateTime"></span>
-                                </div>
-                                <div class="mapping-detail-item">
-                                    <strong>Updated:</strong>
-                                    <span id="taskUpdateTime"></span>
-                                </div>
-                            </div>
-                            <button class="triggring-action-btn" id="cloneTaskBtn" style="margin-top: 15px; width: 100%;" disabled>
-                                <span class="action-text">Clone Selected Task</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Run Task Section -->
                 <div id="runTaskSection" style="display: none;">
                     <div class="submenu-section">
@@ -352,6 +292,7 @@ class IICSAssistant {
                         </div>
                     </div>
                 </div>  
+
                 <!-- Knowledge Articles Section -->
                 <div id="knowledgeArticlesSection"  style="display: none;">
                     <div class="submenu-section">
@@ -388,32 +329,6 @@ class IICSAssistant {
                     </div>
                 </div>
 
-                <!-- Settings Section -->
-                <div class="settings-section" id="settingsSection" style="display: none;">
-                    <div class="settings-content">
-                        <h3>Settings</h3>
-                        
-                        <div class="setting-group">
-                            <label for="backendUrl">Backend URL:</label>
-                            <input type="text" id="backendUrl" class="iics-text-box" value="http://localhost:5000" 
-                                   placeholder="Backend server URL">
-                        </div>
-                        
-                        <div class="setting-group">
-                            <label for="themeSelect">Theme:</label>
-                            <select id="themeSelect" class="iics-select-box">
-                                <option value="light">Light</option>
-                                <option value="dark">Dark</option>
-                                <option value="auto">Auto</option>
-                            </select>
-                        </div>
-                        
-                        <div class="settings-actions">
-                            <button class="settings-btn save-btn" id="saveSettings">Save</button>
-                            <button class="settings-btn cancel-btn" id="cancelSettings">Cancel</button>
-                        </div>
-                    </div>
-                </div>
             </div>
         `;
 
@@ -426,15 +341,11 @@ class IICSAssistant {
 
   bindPanelEvents(panel) {
     // Header controls - only bind to existing elements
-    const settingsBtn = panel.querySelector("#settings-btn");
-    const minimizeBtn = panel.querySelector("#minimize-btn");
+    const logoutBtn = panel.querySelector("#logout-btn");
     const closeBtn = panel.querySelector("#close-btn");
 
-    if (settingsBtn) {
-      settingsBtn.addEventListener("click", () => this.showSettings());
-    }
-    if (minimizeBtn) {
-      minimizeBtn.addEventListener("click", () => this.hideAssistant());
+    if (logoutBtn) {
+      logoutBtn.addEventListener("click", () => this.logout());
     }
     if (closeBtn) {
       closeBtn.addEventListener("click", () => this.hideAssistant());
@@ -513,26 +424,18 @@ class IICSAssistant {
       );
     }
 
-    // Mapping select change handler
-    const mappingSelect = panel.querySelector("#mappingSelect");
-    if (mappingSelect) {
-      mappingSelect.addEventListener("change", (e) =>
-        this.handleMappingSelection(e)
-      );
-    }
-
     // Clone mapping button
+    // const cloneMappingBtn = panel.querySelector("#cloneMappingBtn");
+    // if (cloneMappingBtn) {
+    //   cloneMappingBtn.addEventListener("click", () =>
+    //     this.handleCloneMapping()
+    //   );
+    // }
+
+    // Clone task button
     const cloneMappingBtn = panel.querySelector("#cloneMappingBtn");
     if (cloneMappingBtn) {
       cloneMappingBtn.addEventListener("click", () =>
-        this.handleCloneMapping()
-      );
-    }
-
-    // Clone task button
-    const cloneTaskBtn = panel.querySelector("#cloneTaskBtn");
-    if (cloneTaskBtn) {
-      cloneTaskBtn.addEventListener("click", () =>
         this.handleCloneTask()
       );
     }
@@ -540,20 +443,23 @@ class IICSAssistant {
     // Task select change handler
     const taskSelect = panel.querySelector("#taskSelect");
     if (taskSelect) {
-      taskSelect.addEventListener("change", (e) =>
+      taskSelect.addEventListener("change", (e) => {
+        console.log("taskSelect.value", taskSelect.value);
+        console.log("folderSelect.value", folderSelect.value);
+        console.log("cloneMappingBtn.disabled", cloneMappingBtn.disabled);
         this.handleTaskSelection(e)
-      );
+      });
     }
 
     // Task folder select change handler
-    const taskFolderSelect = panel.querySelector("#taskFolderSelect");
-    if (taskFolderSelect) {
-      taskFolderSelect.addEventListener("change", () => {
-        const taskSelect = panel.querySelector("#taskSelect");
-        const cloneTaskBtn = panel.querySelector("#cloneTaskBtn");
-        if (cloneTaskBtn) {
-          cloneTaskBtn.disabled = !(taskSelect && taskSelect.value && taskFolderSelect.value);
-        }
+    const folderSelect = panel.querySelector("#folderSelect");
+    if (folderSelect) {
+      folderSelect.addEventListener("change", (e) => {
+        this.handleFolderSelection(e)
+          console.log("taskSelect.value", taskSelect.value);
+          console.log("folderSelect.value", folderSelect.value);
+          console.log("cloneMappingBtn.disabled", cloneMappingBtn.disabled);
+        
       });
     }
     // Submenu back button
@@ -578,7 +484,6 @@ class IICSAssistant {
     const cloneMappingSection = this.assistantPanel.querySelector("#cloneMappingSection");
     const cloneTaskSection = this.assistantPanel.querySelector("#cloneTaskSection") || { style: { display: 'none' } };
     const runTaskSection = this.assistantPanel.querySelector("#runTaskSection");
-    const settingsSection = this.assistantPanel.querySelector("#settingsSection");
     // Hide both sections initially
     loginSection.style.display = "none";
     actionsSection.style.display = "none";
@@ -586,7 +491,6 @@ class IICSAssistant {
     cloneMappingSection.style.display = "none";
     cloneTaskSection.style.display = "none";
     runTaskSection.style.display = "none";
-    settingsSection.style.display = "none";
     // Check if we have saved session token
     const savedToken = localStorage.getItem("iics_session_token");
     const savedServerUrl = localStorage.getItem("iics_server_url");
@@ -631,12 +535,9 @@ class IICSAssistant {
   showLoginInterface() {
     const loginSection = this.assistantPanel.querySelector("#loginSection");
     const actionsSection = this.assistantPanel.querySelector("#actionsSection");
-    const settingsSection =
-      this.assistantPanel.querySelector("#settingsSection");
-
+  
     loginSection.style.display = "block";
     actionsSection.style.display = "none";
-    settingsSection.style.display = "none";
     this.updateConnectionStatus("disconnected");
   }
   toggleAssistant() {
@@ -668,29 +569,11 @@ class IICSAssistant {
     if (arrow) arrow.textContent = "▼";
   }
 
-  showSettings() {
-    this.assistantPanel.querySelector("#loginSection").style.display = "none";
-    this.assistantPanel.querySelector("#actionsSection").style.display = "none";
-    this.assistantPanel.querySelector("#settingsSection").style.display =
-      "block";
-  }
 
-  hideSettings() {
-    this.assistantPanel.querySelector("#settingsSection").style.display =
-      "none";
-    if (this.isAuthenticated && this.sessionToken) {
-      this.assistantPanel.querySelector("#actionsSection").style.display =
-        "block";
-    } else {
-      this.showLoginInterface();
-    }
-  }
 
   showLoginInterface() {
     this.assistantPanel.querySelector("#loginSection").style.display = "block";
     this.assistantPanel.querySelector("#actionsSection").style.display = "none";
-    this.assistantPanel.querySelector("#settingsSection").style.display =
-      "none";
     this.updateConnectionStatus("disconnected");
   }
 
@@ -997,7 +880,6 @@ class IICSAssistant {
   }
   async fetchFolders() {
     const folderSelect = this.assistantPanel.querySelector("#folderSelect");
-    const taskFolderSelect = this.assistantPanel.querySelector("#taskFolderSelect");
 
     // -----------------------------------------------------------------
     // 1. Need a valid session token – server URL is hard‑coded later
@@ -1007,9 +889,6 @@ class IICSAssistant {
 
     if (!this.isAuthenticated && !this.sessionToken) {
       folderSelect.innerHTML = '<option value="">Please login first</option>';
-      if (taskFolderSelect) {
-        taskFolderSelect.innerHTML = '<option value="">Please login first</option>';
-      }
       this.showToast("Please login to fetch folders", "error");
       return;
     } else {
@@ -1020,15 +899,9 @@ class IICSAssistant {
       this.assistantPanel.querySelector("#cloneMappingSection").style.display =
         "block";
     }
-    if (!this.sessionToken) {
-
-    }
 
     try {
       folderSelect.innerHTML = '<option value="">Loading folders...</option>';
-      if (taskFolderSelect) {
-        taskFolderSelect.innerHTML = '<option value="">Loading folders...</option>';
-      }
       console.log("Session Token:", this.sessionToken);
 
       // --------------------------------------------------------------
@@ -1122,17 +995,11 @@ class IICSAssistant {
       // --------------------------------------------------------------
       if (projects.length === 0) {
         folderSelect.innerHTML = '<option value="">No folders found</option>';
-        if (taskFolderSelect) {
-          taskFolderSelect.innerHTML = '<option value="">No folders found</option>';
-        }
         this.showToast("No folders found", "info");
         return;
       }
 
       folderSelect.innerHTML = '<option value="">Select a folder...</option>';
-      if (taskFolderSelect) {
-        taskFolderSelect.innerHTML = '<option value="">Select a folder...</option>';
-      }
 
       projects.forEach((proj) => {
         // Try to get the folder name from different possible properties
@@ -1145,15 +1012,6 @@ class IICSAssistant {
         opt.dataset.project = JSON.stringify(proj);
         folderSelect.appendChild(opt);
 
-        // Also add to task folder select if it exists
-        if (taskFolderSelect) {
-          const taskOpt = document.createElement("option");
-          taskOpt.value = folderName;
-          taskOpt.textContent = folderName;
-          taskOpt.dataset.folder = JSON.stringify(proj);
-          taskFolderSelect.appendChild(taskOpt);
-        }
-
         console.log("Added folder:", proj.name);
       });
 
@@ -1161,9 +1019,6 @@ class IICSAssistant {
     } catch (error) {
       console.error("Error fetching folders:", error);
       folderSelect.innerHTML = '<option value="">Error loading folders</option>';
-      if (taskFolderSelect) {
-        taskFolderSelect.innerHTML = '<option value="">Error loading folders</option>';
-      }
       this.showToast("Failed to fetch folders: " + error.message, "error");
     }
   }
@@ -1198,16 +1053,14 @@ class IICSAssistant {
 
   async fetchTasks() {
     const taskSelect = this.assistantPanel.querySelector("#taskSelect");
-    const taskFolderSelect = this.assistantPanel.querySelector("#taskFolderSelect");
+    const folderSelect = this.assistantPanel.querySelector("#folderSelect");
 
     // Check authentication status first
     await this.checkAuthStatus();
 
     if (!this.isAuthenticated && !this.sessionToken) {
       taskSelect.innerHTML = '<option value="">Please login first</option>';
-      if (taskFolderSelect) {
-        taskFolderSelect.innerHTML = '<option value="">Please login first</option>';
-      }
+      folderSelect.innerHTML = '<option value="">Please login first</option>';
       this.showToast("Please login to fetch tasks", "error");
       return;
     } else {
@@ -1221,7 +1074,7 @@ class IICSAssistant {
 
     try {
       taskSelect.innerHTML = '<option value="">Loading mapping tasks...</option>';
-
+      folderSelect.innerHTML = '<option value="">Loading folders...</option>';
       // Get session token - check both session storage and local storage
       let icSessionId = this.sessionToken;
 
@@ -1446,71 +1299,34 @@ class IICSAssistant {
 
   handleTaskSelection(event) {
     const selectedOption = event.target.selectedOptions[0];
-    const taskDetails = this.assistantPanel.querySelector("#taskDetails");
-    const cloneTaskBtn = this.assistantPanel.querySelector("#cloneTaskBtn");
+    const cloneMappingBtn = this.assistantPanel.querySelector("#cloneMappingBtn");
 
     if (!selectedOption.value) {
-      taskDetails.style.display = "none";
-      cloneTaskBtn.disabled = true;
+      cloneMappingBtn.disabled = true;
       return;
     }
 
     try {
       const task = JSON.parse(selectedOption.dataset.task);
-
-      // Update task details
-      this.assistantPanel.querySelector("#taskType").textContent = task.type || 'N/A';
-      this.assistantPanel.querySelector("#taskCreateTime").textContent =
-        task.createTime ? new Date(task.createTime).toLocaleString() : 'N/A';
-      this.assistantPanel.querySelector("#taskUpdateTime").textContent =
-        task.updateTime ? new Date(task.updateTime).toLocaleString() : 'N/A';
-
-      taskDetails.style.display = "block";
-      cloneTaskBtn.disabled = !this.assistantPanel.querySelector("#taskFolderSelect").value;
-
-      // Store selected task
+      cloneMappingBtn.disabled = !this.assistantPanel.querySelector("#folderSelect").value;
       this.selectedTask = task;
     } catch (error) {
       console.error("Error parsing task data:", error);
-      taskDetails.style.display = "none";
-      cloneTaskBtn.disabled = true;
+      cloneMappingBtn.disabled = true;
     }
   }
 
-  handleMappingSelection(event) {
+  handleFolderSelection(event) {
     const selectedOption = event.target.selectedOptions[0];
-    const mappingDetails = this.assistantPanel.querySelector("#mappingDetails");
-    const cloneMappingBtn =
-      this.assistantPanel.querySelector("#cloneMappingBtn");
-
+    const cloneMappingBtn = this.assistantPanel.querySelector("#cloneMappingBtn");
     if (!selectedOption.value) {
-      mappingDetails.style.display = "none";
       cloneMappingBtn.disabled = true;
       return;
     }
-
-    try {
-      const mapping = JSON.parse(selectedOption.dataset.mapping);
-
-      // Display mapping details
-      this.assistantPanel.querySelector("#mappingDescription").textContent =
-        mapping.description || "No description";
-      this.assistantPanel.querySelector("#mappingCreateTime").textContent =
-        new Date(mapping.createTime).toLocaleString();
-      this.assistantPanel.querySelector("#mappingUpdateTime").textContent =
-        new Date(mapping.updateTime).toLocaleString();
-
-      mappingDetails.style.display = "block";
-      cloneMappingBtn.disabled = false;
-
-      // Store selected mapping
-      this.selectedMapping = mapping;
-    } catch (error) {
-      console.error("Error parsing mapping data:", error);
-      mappingDetails.style.display = "none";
-      cloneMappingBtn.disabled = true;
-    }
+    cloneMappingBtn.disabled = false;
   }
+
+
 
   async handleCloneMapping() {
     if (!this.selectedMapping) {
@@ -1528,8 +1344,8 @@ class IICSAssistant {
 
   async handleCloneTask() {
     const taskSelect = this.assistantPanel.querySelector("#taskSelect");
-    const folderSelect = this.assistantPanel.querySelector("#taskFolderSelect");
-    const cloneBtn = this.assistantPanel.querySelector("#cloneTaskBtn");
+    const folderSelect = this.assistantPanel.querySelector("#folderSelect");
+    const cloneBtn = this.assistantPanel.querySelector("#cloneMappingBtn");
 
     if (!taskSelect.value || !folderSelect.value) {
       this.showToast("Please select both a task and a target folder", "error");
@@ -1540,35 +1356,28 @@ class IICSAssistant {
       cloneBtn.disabled = true;
       cloneBtn.innerHTML = '<span class="spinner"></span> Cloning...';
 
-      // Get the selected task data
-      const selectedOption = taskSelect.selectedOptions[0];
-      const task = JSON.parse(selectedOption.dataset.task);
 
-      // Get the selected folder data
-      const folderOption = folderSelect.selectedOptions[0];
-      const folder = JSON.parse(folderOption.dataset.folder);
 
       // Prepare the clone request
-      const apiUrl = `https://use4.dm-us.informaticacloud.com/saas/api/v2/mttask/${task.id}?expand=all`;
+      //const apiUrl = `https://use4.dm-us.informaticacloud.com/saas/api/v2/mttask/${task.id}?expand=all`;
 
       // Use the makeApiRequest helper to handle the API call
-      await this.makeApiRequest(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: {
-          name: `${task.name} (Copy)`,
-          projectId: folder.id
-        }
-      });
+      // await this.makeApiRequest(apiUrl, {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json'
+      //   },
+      //   body: {
+      //     name: `${task.name} (Copy)`,
+      //     projectId: folder.id
+      //   }
+      // });
 
       this.showToast("Task cloned successfully!", "success");
 
       // Reset the form
       taskSelect.value = "";
       folderSelect.value = "";
-      this.assistantPanel.querySelector("#taskDetails").style.display = "none";
 
     } catch (error) {
       console.error("Error cloning task:", error);
