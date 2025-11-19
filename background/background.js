@@ -39,7 +39,7 @@ async function toggleAssistant(tab) {
         });
         return;
     }
-    
+
     try {
         // Send message to content script to toggle assistant
         await chrome.tabs.sendMessage(tab.id, {
@@ -53,7 +53,7 @@ async function toggleAssistant(tab) {
 
 function handleInstallation(details) {
     console.log('IICS Assistant installed:', details);
-    
+
     if (details.reason === 'install') {
         // First time installation
         setDefaultSettings();
@@ -74,12 +74,54 @@ function handleMessage(message, sender, sendResponse) {
             // Handle authentication status requests
             sendResponse({ authenticated: false }); // Placeholder
             break;
-            
-        
-            
+
+        case 'API_REQUEST':
+            handleApiRequest(message.payload, sendResponse);
+            return true; // Keep channel open
+
         default:
             console.log('Unknown message type:', message.type);
             sendResponse({ error: 'Unknown message type' });
+    }
+}
+
+async function handleApiRequest(payload, sendResponse) {
+    try {
+        const { url, method, headers, body } = payload;
+
+        const options = {
+            method: method || 'GET',
+            headers: headers || {},
+        };
+
+        if (body && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+            options.body = typeof body === 'string' ? body : JSON.stringify(body);
+        }
+
+        const response = await fetch(url, options);
+
+        // Handle non-JSON responses or errors gracefully
+        const contentType = response.headers.get('content-type') || '';
+        let data;
+
+        if (contentType.includes('application/json')) {
+            data = await response.json();
+        } else {
+            data = await response.text();
+        }
+
+        if (response.ok) {
+            sendResponse({ success: true, data });
+        } else {
+            sendResponse({
+                success: false,
+                error: typeof data === 'object' ? (data.message || data.error?.message || JSON.stringify(data)) : data || `HTTP ${response.status}`,
+                status: response.status
+            });
+        }
+    } catch (error) {
+        console.error('API Request failed:', error);
+        sendResponse({ success: false, error: error.message });
     }
 }
 
@@ -95,14 +137,14 @@ function handleTabUpdate(tabId, changeInfo, tab) {
 
 function isIICSPage(url) {
     if (!url) return false;
-    
+
     const iicsPatterns = [
         'informaticacloud.com',
         'dm-us.informaticacloud.com',
         'dm-eu.informaticacloud.com',
         'dm-ap.informaticacloud.com'
     ];
-    
+
     return iicsPatterns.some(pattern => url.includes(pattern));
 }
 

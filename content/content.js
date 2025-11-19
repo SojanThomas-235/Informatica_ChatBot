@@ -248,19 +248,9 @@ class IICSAssistant {
                                     <option value="">Loading folders...</option>
                                 </select>
                             </div>
-                            <div id="mappingDetails" style="display: none; margin-top: 15px;">
-                                <div class="mapping-detail-item">
-                                    <strong>Description:</strong>
-                                    <span id="mappingDescription"></span>
-                                </div>
-                                <div class="mapping-detail-item">
-                                    <strong>Created:</strong>
-                                    <span id="mappingCreateTime"></span>
-                                </div>
-                                <div class="mapping-detail-item">
-                                    <strong>Updated:</strong>
-                                    <span id="mappingUpdateTime"></span>
-                                </div>
+                            <div class="form-group">
+                            <label for="mappingName">Mapping Name:</label>
+                            <input type="text" id="mappingName" class="iics-text-box" placeholder="Enter mapping name">
                             </div>
                             <button class="triggring-action-btn" id="cloneMappingBtn" style="margin-top: 15px; width: 100%;" disabled>
                                 <span class="action-text">Clone Selected Mapping</span>
@@ -456,10 +446,10 @@ class IICSAssistant {
     if (folderSelect) {
       folderSelect.addEventListener("change", (e) => {
         this.handleFolderSelection(e)
-          console.log("taskSelect.value", taskSelect.value);
-          console.log("folderSelect.value", folderSelect.value);
-          console.log("cloneMappingBtn.disabled", cloneMappingBtn.disabled);
-        
+        console.log("taskSelect.value", taskSelect.value);
+        console.log("folderSelect.value", folderSelect.value);
+        console.log("cloneMappingBtn.disabled", cloneMappingBtn.disabled);
+
       });
     }
     // Submenu back button
@@ -535,9 +525,18 @@ class IICSAssistant {
   showLoginInterface() {
     const loginSection = this.assistantPanel.querySelector("#loginSection");
     const actionsSection = this.assistantPanel.querySelector("#actionsSection");
-  
+    const createAssetsSubmenu = this.assistantPanel.querySelector("#createAssetsSubmenu");
+    const cloneMappingSection = this.assistantPanel.querySelector("#cloneMappingSection");
+    const runTaskSection = this.assistantPanel.querySelector("#runTaskSection");
+    const runningJobsSection = this.assistantPanel.querySelector("#runningJobsSection");
+    const knowledgeArticleSection = this.assistantPanel.querySelector("#knowledgeArticleSection");
     loginSection.style.display = "block";
     actionsSection.style.display = "none";
+    createAssetsSubmenu.style.display = "none";
+    cloneMappingSection.style.display = "none";
+    runTaskSection.style.display = "none";
+    runningJobsSection.style.display = "none";
+    knowledgeArticleSection.style.display = "none";
     this.updateConnectionStatus("disconnected");
   }
   toggleAssistant() {
@@ -567,14 +566,6 @@ class IICSAssistant {
     // Update toggle arrow
     const arrow = document.querySelector(".toggle-arrow");
     if (arrow) arrow.textContent = "▼";
-  }
-
-
-
-  showLoginInterface() {
-    this.assistantPanel.querySelector("#loginSection").style.display = "block";
-    this.assistantPanel.querySelector("#actionsSection").style.display = "none";
-    this.updateConnectionStatus("disconnected");
   }
 
   showActionsSection() {
@@ -858,7 +849,7 @@ class IICSAssistant {
 
     //https://www.thinketl.com/blog/
     window.open("https://www.thinketl.com/blog/", "_blank");
-  } 
+  }
   async showInformaticaBlogs() {
 
     //https://www.informatica.com/blog
@@ -1024,6 +1015,10 @@ class IICSAssistant {
   }
   // Helper method to make API requests through the background script
   async makeApiRequest(url, options = {}) {
+    console.log('headers', options.headers);
+    console.log('body', options.body);
+    console.log('method', options.method);
+    console.log('url', url);
     return new Promise((resolve, reject) => {
       chrome.runtime.sendMessage({
         type: 'API_REQUEST',
@@ -1038,13 +1033,16 @@ class IICSAssistant {
         }
       }, (response) => {
         if (chrome.runtime.lastError) {
+          console.log('response', response);
           reject(new Error(chrome.runtime.lastError.message));
           return;
         }
 
         if (response && response.success) {
+          console.log(response);
           resolve(response.data);
         } else {
+          console.log(response);
           reject(new Error(response?.error || 'Request failed'));
         }
       });
@@ -1338,9 +1336,8 @@ class IICSAssistant {
     this.showToast(`Cloning mapping: ${this.selectedMapping.name}`, "info");
     console.log("Selected mapping to clone:", this.selectedMapping);
 
-    // Future implementation will call the clone API
-    //await this.callCloneMappingAPI(this.selectedMapping);
   }
+
 
   async handleCloneTask() {
     const taskSelect = this.assistantPanel.querySelector("#taskSelect");
@@ -1353,27 +1350,75 @@ class IICSAssistant {
     }
 
     try {
+      // Get selected task and folder data
+      const selectedTask = JSON.parse(taskSelect.selectedOptions[0].dataset.task);
+      const selectedFolder = JSON.parse(folderSelect.selectedOptions[0].dataset.project);
+
+      // Show loading state
       cloneBtn.disabled = true;
       cloneBtn.innerHTML = '<span class="spinner"></span> Cloning...';
 
+      // Generate a new name for the cloned task
+      const newTaskName = `${selectedTask.name}_Clone_${new Date().getTime()}`;
+      console.log("Selected Task:", selectedTask.id)
+      console.log("Selected Folder:", selectedFolder.id)
 
+      // Prepare the API endpoint
+      const apiUrl = `https://use4.dm-us.informaticacloud.com/saas/api/v2/mttask/${selectedTask.id}`;
+      console.log('apiUrl', apiUrl);
+      console.log('icSessionID', this.sessionToken);
 
-      // Prepare the clone request
-      //const apiUrl = `https://use4.dm-us.informaticacloud.com/saas/api/v2/mttask/${task.id}?expand=all`;
+      // First, fetch the complete task details
+      const taskDetails = await this.makeApiRequest(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'icSessionId': this.sessionToken
+        }
+      });
 
-      // Use the makeApiRequest helper to handle the API call
-      // await this.makeApiRequest(apiUrl, {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json'
-      //   },
-      //   body: {
-      //     name: `${task.name} (Copy)`,
-      //     projectId: folder.id
-      //   }
-      // });
+      console.log('taskDetails', taskDetails);
+      if (!taskDetails) {
+        throw new Error('Failed to fetch task details');
+      }
 
-      this.showToast("Task cloned successfully!", "success");
+      // Prepare the task data for cloning
+      const taskData = {
+        ...taskDetails,
+        name: newTaskName,
+        projectId: selectedFolder.id,
+        // Clear these fields as they should be regenerated
+        id: undefined,
+        createTime: undefined,
+        updateTime: undefined,
+        createdBy: undefined,
+        updatedBy: undefined,
+        // Add any other fields that need to be reset
+      };
+
+      // Make the API call to create the cloned task
+      const response = await this.makeApiRequest(
+        'https://use4.dm-us.informaticacloud.com/saas/api/v2/mttask',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'icSessionId': this.sessionToken
+          },
+          body: JSON.stringify(taskData)
+        }
+      );
+
+      if (response && response.id) {
+        this.showToast(`Task '${newTaskName}' cloned successfully!`, "success");
+        // Refresh the task list
+        await this.fetchTasks();
+        await this.fetchFolders();
+      } else {
+        throw new Error('Failed to create cloned task');
+      }
 
       // Reset the form
       taskSelect.value = "";

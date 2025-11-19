@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Informatica Cloud Assistant",
   "version": "1.0.3",
-  "description": "Your AI-powered assistant for Informatica Cloud. Get help, automate tasks, and enhance your productivity.Informatica_chat_boxInformatica_ChatBot",
+  "description": "Your AI-powered assistant for Informatica Cloud. Get help, automate tasks, and enhance your productivity.",
   "permissions": [
     "cookies",
     "storage",
@@ -43,12 +43,15 @@
         "https://*.informaticacloud.eu/*",
         "https://*.informaticacloud.com.au/*"
       ],
-      "js": ["content/content.js"],
-      "css": ["content/content.css"],
+      "js": [
+        "content/content.js"
+      ],
+      "css": [
+        "content/content.css"
+      ],
       "run_at": "document_end"
     }
   ],
-  
   "web_accessible_resources": [
     {
       "resources": [
@@ -57,7 +60,9 @@
         "js/*",
         "API/*"
       ],
-      "matches": ["<all_urls>"]
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }
