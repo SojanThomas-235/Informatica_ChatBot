@@ -523,20 +523,25 @@ class IICSAssistant {
   }
   // Update showLoginInterface to ensure proper section visibility
   showLoginInterface() {
+    const sections = [
+      "#actionsSection",
+      "#createAssetsSubmenu",
+      "#cloneMappingSection",
+      "#runTaskSection",
+      "#knowledgeArticlesSection",
+      "#runningJobsSection"
+    ];
+
+    // Hide all other sections
+    sections.forEach(selector => {
+      const el = this.assistantPanel.querySelector(selector);
+      if (el) el.style.display = "none";
+    });
+
+    // Show login section
     const loginSection = this.assistantPanel.querySelector("#loginSection");
-    const actionsSection = this.assistantPanel.querySelector("#actionsSection");
-    const createAssetsSubmenu = this.assistantPanel.querySelector("#createAssetsSubmenu");
-    const cloneMappingSection = this.assistantPanel.querySelector("#cloneMappingSection");
-    const runTaskSection = this.assistantPanel.querySelector("#runTaskSection");
-    const runningJobsSection = this.assistantPanel.querySelector("#runningJobsSection");
-    const knowledgeArticleSection = this.assistantPanel.querySelector("#knowledgeArticleSection");
-    loginSection.style.display = "block";
-    actionsSection.style.display = "none";
-    createAssetsSubmenu.style.display = "none";
-    cloneMappingSection.style.display = "none";
-    runTaskSection.style.display = "none";
-    runningJobsSection.style.display = "none";
-    knowledgeArticleSection.style.display = "none";
+    if (loginSection) loginSection.style.display = "block";
+
     this.updateConnectionStatus("disconnected");
   }
   toggleAssistant() {
@@ -1342,10 +1347,17 @@ class IICSAssistant {
   async handleCloneTask() {
     const taskSelect = this.assistantPanel.querySelector("#taskSelect");
     const folderSelect = this.assistantPanel.querySelector("#folderSelect");
+    const mappingNameInput = this.assistantPanel.querySelector("#mappingName");
     const cloneBtn = this.assistantPanel.querySelector("#cloneMappingBtn");
 
     if (!taskSelect.value || !folderSelect.value) {
       this.showToast("Please select both a task and a target folder", "error");
+      return;
+    }
+
+    const newName = mappingNameInput.value.trim();
+    if (!newName) {
+      this.showToast("Please enter a mapping name", "error");
       return;
     }
 
@@ -1358,10 +1370,11 @@ class IICSAssistant {
       cloneBtn.disabled = true;
       cloneBtn.innerHTML = '<span class="spinner"></span> Cloning...';
 
-      // Generate a new name for the cloned task
-      const newTaskName = `${selectedTask.name}_Clone_${new Date().getTime()}`;
-      console.log("Selected Task:", selectedTask.id)
-      console.log("Selected Folder:", selectedFolder.id)
+      // Use user provided name
+      const newTaskName = newName;
+      console.log("Selected Task:", selectedTask.id);
+      console.log("Selected Folder:", selectedFolder.id);
+      console.log("New Task Name:", newTaskName);
 
       // Prepare the API endpoint
       const apiUrl = `https://use4.dm-us.informaticacloud.com/saas/api/v2/mttask/${selectedTask.id}`;
@@ -1416,6 +1429,8 @@ class IICSAssistant {
         // Refresh the task list
         await this.fetchTasks();
         await this.fetchFolders();
+        // Clear input
+        mappingNameInput.value = "";
       } else {
         throw new Error('Failed to create cloned task');
       }
@@ -1671,19 +1686,6 @@ class IICSAssistant {
     this.selectedTaskFlow = JSON.parse(selectedOption.dataset.taskFlow);
   }
 
-  // handleRunSelectedTask() {
-  //     if (!this.selectedTaskFlow) {
-  //         this.showToast('Please select a task flow first', 'error');
-  //         return;
-  //     }
-
-  //     // Placeholder for run task functionality
-  //     this.showToast(`Running task flow: ${this.selectedTaskFlow.path || this.selectedTaskFlow.id}`, 'info');
-  //     console.log('Selected task flow to run:', this.selectedTaskFlow);
-
-  //     // Future implementation will call the run task API
-  //     // await this.callRunTaskAPI(this.selectedTaskFlow);
-  // }
 
   logout() {
     // Clear session
